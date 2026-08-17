@@ -42,9 +42,45 @@ def warn(msg): warns.append(msg)
 if len(sys.argv) >= 3 and sys.argv[1] == "--live":
     src = sys.argv[2]
     if src.startswith("http"):
+        import socket
+        import urllib.error
+        import urllib.parse
         import urllib.request
-        with urllib.request.urlopen(src, timeout=15) as r:
-            payload = json.loads(r.read().decode("utf-8"))
+        host = urllib.parse.urlsplit(src).hostname or ""
+        # Cloudflare answers 403 to the default "Python-urllib/x.y" User-Agent, so send a real one.
+        # Verified 2026-08-17: Python-urllib -> 403, any other UA -> reaches the origin.
+        req = urllib.request.Request(src, headers={
+            "User-Agent": "CyberTriageAI-invariant-checker/1.0",
+            "Accept": "application/json",
+        })
+        try:
+            payload = json.loads(urllib.request.urlopen(req, timeout=15).read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            hint = {
+                403: "blocked before reaching the app — usually Cloudflare bot protection. Check the\n"
+                     "  Cloudflare Security > Events log for this request.",
+                404: "nginx is serving that hostname but the /api/public/attacks location is not proxied yet (runbook step 3).",
+                502: "nginx reached but gunicorn is not answering — check: sudo systemctl status cybertriage",
+                503: "the endpoint answered 'temporarily unavailable' — the app cannot reach PostgreSQL.",
+                429: "rate limited (30/min per IP). Wait a minute and retry.",
+            }.get(e.code, "unexpected HTTP status.")
+            sys.exit(f"REJECT - HTTP {e.code} from {src}\n  {hint}")
+        except urllib.error.URLError as e:
+            reason = getattr(e, "reason", e)
+            if isinstance(reason, socket.gaierror):
+                sys.exit(
+                    f"REJECT - DNS lookup for '{host}' failed, so nothing was checked.\n"
+                    f"  The hostname does not exist yet. Create it in Cloudflare first:\n"
+                    f"    A   {host.split('.')[0]}   34.129.122.191   Proxied   TTL Auto\n"
+                    f"  Then run the VM runbook (docs/PHASE3_DEPLOY.md) before re-running this.\n"
+                    f"  If you just created the record, clear the local cache: ipconfig /flushdns"
+                )
+            sys.exit(f"REJECT - could not reach {src}\n  {reason}\n"
+                     f"  Is the site deployed and is HTTPS working on that hostname?")
+        except json.JSONDecodeError:
+            sys.exit(f"REJECT - {src} did not return JSON.\n"
+                     f"  A login page or an nginx error page usually means the /api/public/attacks\n"
+                     f"  location block is missing, so the request fell through to the old app.")
     else:
         payload = json.loads(Path(src).read_text(encoding="utf-8"))
     fig = payload.get("figures", {})
