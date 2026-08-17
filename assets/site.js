@@ -1,4 +1,4 @@
-/* CyberTriageAI — shared helpers. No framework, no innerHTML.
+/* CyberTriageAI — shared helpers. No framework; DOM is built with createElement + textContent only.
  *
  * Every piece of data on the site (IPs, country names, technique names, case
  * prose) is written into the page through `el()` / `textContent`, so a value
@@ -7,6 +7,8 @@
 (function () {
   "use strict";
 
+  // D / F start as the built-in static sample (assets/data.js, assets/figures.js) and are
+  // replaced by the live feed inside ready() when /api/public/attacks answers.
   var D = window.DATA;
   var F = window.FIGURES || {};
 
@@ -66,51 +68,157 @@
     return a;
   }
 
-  /* ---------- derived statistics (computed once, used everywhere) ------- */
+  /* ---------- derived statistics (computed from D/F, used everywhere) --- */
   function sum(arr, f) { return arr.reduce(function (s, x) { return s + (f ? f(x) : x); }, 0); }
   function uniq(arr) { return arr.filter(function (x, i) { return arr.indexOf(x) === i; }); }
 
-  var queue = D.queue.slice().sort(function (a, b) {
-    var s = SEV_ORDER.indexOf(a.sev) - SEV_ORDER.indexOf(b.sev);
-    return s !== 0 ? s : b.n - a.n;
-  });
-  var total24 = sum(queue, function (q) { return q.n; });
-  var bySev = {};
-  SEV_ORDER.forEach(function (s) { bySev[s] = sum(queue.filter(function (q) { return q.sev === s; }), function (q) { return q.n; }); });
-  var byTactic = {};
-  queue.forEach(function (q) { byTactic[q.tactic] = (byTactic[q.tactic] || 0) + q.n; });
-  var tacticsTouched = D.tactics.filter(function (t) { return byTactic[t]; }).length;
+  var STATS = {}, tokens = {};
+  function computeStats() {
+    var queue = D.queue.slice().sort(function (a, b) {
+      var s = SEV_ORDER.indexOf(a.sev) - SEV_ORDER.indexOf(b.sev);
+      return s !== 0 ? s : b.n - a.n;
+    });
+    var total24 = sum(queue, function (q) { return q.n; });
+    var bySev = {};
+    SEV_ORDER.forEach(function (s) { bySev[s] = sum(queue.filter(function (q) { return q.sev === s; }), function (q) { return q.n; }); });
+    var byTactic = {};
+    queue.forEach(function (q) { byTactic[q.tactic] = (byTactic[q.tactic] || 0) + q.n; });
+    var tacticsTouched = D.tactics.filter(function (t) { return byTactic[t]; }).length;
 
-  var cases = D.cases.map(function (c) {
-    var findings = sum(c.events, function (e) { return e.n; });
-    var ips = uniq(c.events.map(function (e) { return e.ip; })).length;
-    var techniques = uniq(c.events.map(function (e) { return e.id; })).length;
-    var out = {}; Object.keys(c).forEach(function (k) { out[k] = c[k]; });
-    out.findings = findings; out.ips = ips; out.techniques = techniques;
-    return out;
-  });
-  var openCases = cases.filter(function (c) { return c.status === "open"; }).length;
+    var cases = D.cases.map(function (c) {
+      var findings = sum(c.events, function (e) { return e.n; });
+      var ips = uniq(c.events.map(function (e) { return e.ip; })).length;
+      var techniques = uniq(c.events.map(function (e) { return e.id; })).length;
+      var out = {}; Object.keys(c).forEach(function (k) { out[k] = c[k]; });
+      out.findings = (typeof c.findingCount === "number") ? c.findingCount : findings;   // live: case total; sample: evidence sum
+      out.evidenceTotal = findings; out.ips = ips; out.techniques = techniques;
+      return out;
+    });
+    var openCases = (typeof F.openCases === "number") ? F.openCases : cases.filter(function (c) { return c.status === "open"; }).length;
+    var critical24 = (typeof F.critical24 === "number") ? F.critical24 : bySev.CRITICAL;
 
-  function queueN(id) { var q = queue.filter(function (x) { return x.id === id; })[0]; return q ? q.n : 0; }
-  var tokens = {
-    "TOTAL24": total24, "NTECH": queue.length, "NCASES": cases.length, "NCOUNTRIES": D.origins.length,
-    "NTECHDB": D.mitreTechniqueCount, "CRED": queueN("T1110") + queueN("T1078"), "NODE": D.node
-  };
-  queue.forEach(function (q) { tokens[q.id] = q.n; });
+    function queueN(id) { var q = queue.filter(function (x) { return x.id === id; })[0]; return q ? q.n : 0; }
+    tokens = {
+      "TOTAL24": total24, "NTECH": queue.length, "NCASES": cases.length, "NCOUNTRIES": D.origins.length,
+      "NTECHDB": D.mitreTechniqueCount, "CRED": queueN("T1110") + queueN("T1078"), "NODE": D.node,
+      "IPS24": (typeof F.uniqueIps24h === "number") ? F.uniqueIps24h : "[PS: fill]"
+    };
+    queue.forEach(function (q) { tokens[q.id] = q.n; tokens[q.id + ".ips"] = q.ips; tokens[q.id + ".countries"] = q.countries; });
+
+    STATS.queue = queue; STATS.total24 = total24; STATS.bySev = bySev; STATS.byTactic = byTactic;
+    STATS.tacticsTouched = tacticsTouched; STATS.categories = queue.length; STATS.cases = cases;
+    STATS.openCases = openCases; STATS.allTime = F.allTimeTotal; STATS.uniqueIps24h = F.uniqueIps24h;
+    STATS.critical24 = critical24; STATS.aiWrittenCases = (typeof F.aiWrittenCases === "number") ? F.aiWrittenCases : cases.length;
+    STATS.buckets5m = D.buckets5m || null; STATS.buckets30m = D.buckets30m || null; STATS.recent = D.recent || null;
+    STATS.node = D.node; STATS.nodeShort = D.nodeShort; STATS.nodeCoord = D.nodeCoord;
+    return STATS;
+  }
   // Resolve a "{TOKEN}" template into text; numbers are formatted.
   function fill(s) {
-    return String(s).replace(/\{([A-Z0-9.]+)\}/g, function (_, k) {
+    return String(s).replace(/\{([A-Z0-9.]+(?:\.[a-z]+)?)\}/g, function (_, k) {
       var v = tokens[k]; if (v === undefined) return "{" + k + "}";
       return typeof v === "number" ? fmt(v) : v;
     });
   }
   function tokenValue(k) { return k ? tokens[k] : undefined; }
+  computeStats();   // sample stats are available synchronously; ready() recomputes after the fetch
 
-  var STATS = {
-    queue: queue, total24: total24, bySev: bySev, byTactic: byTactic, tacticsTouched: tacticsTouched,
-    categories: queue.length, cases: cases, openCases: openCases, allTime: F.allTimeTotal, uniqueIps24h: F.uniqueIps24h,
-    critical24: bySev.CRITICAL
-  };
+  /* ---------- live feed: fetch → map → fallback ------------------------- */
+  // Country centroids for drawing arcs (region-level; not attacker locations).
+  var CENTROID = { US: [-98.5, 39.8], BE: [4.5, 50.6], GB: [-2.0, 54.0], TR: [35.2, 39.0], NL: [5.3, 52.2], CN: [104.2, 35.9],
+    RU: [90.0, 60.0], BR: [-51.9, -14.2], IN: [78.9, 22.6], VN: [108.3, 14.1], DE: [10.4, 51.2], FR: [2.2, 46.6], KR: [127.8, 36.5],
+    JP: [138.3, 36.2], SG: [103.8, 1.35], HK: [114.2, 22.3], TW: [120.9, 23.7], ID: [113.9, -0.8], TH: [100.9, 15.9], PK: [69.3, 30.4],
+    BD: [90.4, 23.7], IR: [53.7, 32.4], UA: [31.2, 48.4], PL: [19.1, 51.9], RO: [24.9, 45.9], BG: [25.5, 42.7], IT: [12.6, 41.9],
+    ES: [-3.7, 40.5], PT: [-8.2, 39.4], SE: [18.6, 60.1], FI: [25.7, 61.9], NO: [8.5, 60.5], CA: [-106.3, 56.1], MX: [-102.6, 23.6],
+    AR: [-63.6, -38.4], CO: [-74.3, 4.6], ZA: [22.9, -30.6], NG: [8.7, 9.1], EG: [30.8, 26.8], AU: [133.8, -25.3], NZ: [174.9, -40.9],
+    KZ: [66.9, 48.0], LT: [23.9, 55.2], LV: [24.6, 56.9], EE: [25.0, 58.6], CZ: [15.5, 49.8], HU: [19.5, 47.2], AT: [14.6, 47.5],
+    CH: [8.2, 46.8], IE: [-8.2, 53.4], MD: [28.4, 47.4], SC: [55.5, -4.7], PA: [-80.8, 8.5], AE: [53.8, 23.4], SA: [45.1, 23.9] };
+
+  function timeAgo(iso) {
+    if (!iso) return "";
+    var t = Date.parse(iso); if (isNaN(t)) return "";
+    var s = Math.max(0, Math.round((Date.now() - t) / 1000));
+    if (s < 60) return s + "s ago"; var m = Math.floor(s / 60);
+    if (m < 60) return m + "m ago"; var h = Math.floor(m / 60);
+    if (h < 48) return h + "h ago"; return Math.floor(h / 24) + "d ago";
+  }
+  function hhmm(iso) { var d = new Date(iso); return isNaN(d) ? "" : ("0" + d.getUTCHours()).slice(-2) + ":" + ("0" + d.getUTCMinutes()).slice(-2); }
+  function hhmmss(iso) { var d = new Date(iso); return isNaN(d) ? "" : hhmm(iso) + ":" + ("0" + d.getUTCSeconds()).slice(-2); }
+  function humanDur(a, b) {
+    var ms = Date.parse(b) - Date.parse(a); if (isNaN(ms) || ms < 0) return "";
+    var m = Math.round(ms / 60000); if (m < 60) return m + "m"; var h = Math.floor(m / 60); return h + "h" + (m % 60 ? " " + (m % 60) + "m" : "");
+  }
+  function dateLabel(iso) { var d = new Date(iso); return isNaN(d) ? "" : d.getUTCDate() + " " + ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()] + " " + d.getUTCFullYear(); }
+
+  // Analyst one-liners per technique — authored prose, NOT data (docs/FIELD_MAPPING.md §C).
+  var READ = {};
+  (window.DATA.queue || []).forEach(function (q) { READ[q.id] = q.read; });
+
+  // Map the API payload (public_api.build_payload) into the page shape data.js uses.
+  function mapPayload(p) {
+    var sample = window.DATA;
+    var out = {
+      brand: sample.brand, tactics: sample.tactics, frameworks: sample.frameworks,
+      mitreTechniqueCount: (p.figures && p.figures.mitre_technique_count) || sample.mitreTechniqueCount,
+      node: "a single honeypot node in " + ((p.node && p.node.label) || sample.nodeShort).replace(/, AU$/, ", Australia"),
+      nodeShort: (p.node && p.node.label) || sample.nodeShort, nodeCoord: (p.node && p.node.coord) || sample.nodeCoord,
+      queue: (p.queue || []).map(function (q) {
+        return { id: q.id, name: q.name, sev: q.sev || "LOW", tactic: q.tactic, n: q.n, ips: q.ips, countries: q.countries,
+          ago: timeAgo(q.last_seen), read: READ[q.id] || "", hourly: q.hourly || null,
+          members: (q.members || []).map(function (m) { return { ip: m.ip, c: m.country || "", n: m.n, ago: timeAgo(m.last_seen) }; }) };
+      }),
+      origins: (p.origins || []).map(function (o) { return { name: o.country, cc: o.cc, coord: CENTROID[o.cc] || null, w: Math.round(o.pct), n: o.n }; }),
+      cases: (p.cases || []).map(function (c) {
+        var s = c.ai_summary;
+        return { id: "CASE-" + c.id, title: c.title, date: dateLabel(c.created_at), sev: c.severity || "LOW", status: c.status,
+          window: c.first_seen ? hhmm(c.first_seen) + " – " + hhmm(c.last_seen) + " UTC" : "—", dur: humanDur(c.first_seen, c.last_seen),
+          confidence: null, findingCount: c.finding_count, source: c.source,
+          happened: s ? s.happening : null, matters: s ? s.matters : null, next: s ? s.next : null,
+          writtenAtFindings: s ? s.written_at_findings : null,
+          phases: (c.phases || []).map(function (ph) {
+            return { t: hhmmss(ph.first_seen), label: ph.name || ph.tid, body: fmt(ph.n) + " event" + (ph.n === 1 ? "" : "s") + " from " + ph.ips + " address" + (ph.ips === 1 ? "" : "es"), tech: ph.tid, sev: ph.sev || "LOW" };
+          }),
+          events: (c.groups || []).map(function (g) { return { sev: g.sev || "LOW", ip: g.ip, tech: g.name, id: g.tid, n: g.n }; }) };
+      }),
+      buckets5m: p.buckets_5m || null, buckets30m: p.buckets_30m || null,
+      recent: (p.recent || []).map(function (r) { return { cc: r.cc, coord: CENTROID[r.cc] || null, sev: r.sev, tid: r.tid, at: r.at }; })
+    };
+    var f = p.figures || {};
+    var figs = { allTimeTotal: f.all_time_total, uniqueIps24h: f.unique_ips_24h, critical24: f.critical_24h,
+      openCases: f.open_cases, aiWrittenCases: f.ai_written_cases_7d, generatedAt: p.generated_at };
+    return { data: out, figures: figs };
+  }
+
+  var SOURCE = { kind: "sample", generatedAt: null, error: null };
+  var readyState = "loading", pending = [];
+  function finish(kind, err) {
+    SOURCE.kind = kind; SOURCE.error = err || null; SOURCE.generatedAt = F.generatedAt || null;
+    computeStats(); readyState = "done";
+    pending.splice(0).forEach(function (cb) { try { cb(); } catch (e) { if (window.console) console.error(e); } });
+  }
+  function ready(cb) { if (readyState === "done") cb(); else pending.push(cb); }
+
+  (function fetchLive() {
+    var cfg = window.CONFIG || {}, url = cfg.apiUrl;
+    if (!url || typeof fetch !== "function") { finish("sample", "no api configured"); return; }
+    var ctl = (typeof AbortController === "function") ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, cfg.fetchTimeoutMs || 5000);
+    fetch(url, { method: "GET", credentials: "omit", mode: "cors", cache: "default", signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function (p) {
+        clearTimeout(timer);
+        if (!p || !Array.isArray(p.queue) || !p.figures) throw new Error("bad payload");
+        var m = mapPayload(p); D = m.data; F = m.figures; finish("live");
+      })
+      .catch(function (e) { clearTimeout(timer); finish("sample", String(e && e.message || e)); });
+  })();
+
+  function sourceBadge() {
+    if (SOURCE.kind === "live") return livePill("live · " + (SOURCE.generatedAt ? "refreshed " + timeAgo(SOURCE.generatedAt) : "just now"), "#5FE3B0");
+    return el("span", { className: "pill", title: "The live feed was not reachable" + (SOURCE.error ? " (" + SOURCE.error + ")" : "") + " — showing the built-in sample." },
+      el("span", { className: "dot", style: "background:#FFA85C;box-shadow:0 0 9px #FFA85C;" }), "sample data");
+  }
+  function isLive() { return SOURCE.kind === "live"; }
 
   /* ---------- chrome: nav + footer -------------------------------------- */
   var NAV = [
@@ -154,7 +262,7 @@
   function livePill(text, color) {
     return el("span", { className: "pill" }, el("span", { className: "dot", style: "background:" + (color || "#5FE3B0") + ";box-shadow:0 0 9px " + (color || "#5FE3B0") + ";" }), text);
   }
-  function demoTag(text) { return el("span", { className: "demo-tag", title: "Demo data — not a live feed yet" }, text || "demo data"); }
+  function demoTag(text, title) { return el("span", { className: "demo-tag", title: title || null }, text || "demo data"); }
 
   /* ---------- embedded (iframe) mode ------------------------------------ */
   // When a subpage is shown inside index.html's "Inside the tool" frame we hide
@@ -176,6 +284,7 @@
     el: el, append: append, clear: clear, replace: replace, $: $, fmt: fmt, fig: fig, isFilled: isFilled,
     SEV: SEV, SEV_ORDER: SEV_ORDER, mitreUrl: mitreUrl, mitreLink: mitreLink, fill: fill, tokenValue: tokenValue,
     STATS: STATS, renderHeader: renderHeader, renderFooter: renderFooter, logo: logo, livePill: livePill, demoTag: demoTag,
-    embed: embed, DISCLAIMER: DISCLAIMER, RM: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    embed: embed, DISCLAIMER: DISCLAIMER, RM: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    ready: ready, sourceBadge: sourceBadge, isLive: isLive, timeAgo: timeAgo, data: function () { return D; }, figures: function () { return F; }
   };
 })();

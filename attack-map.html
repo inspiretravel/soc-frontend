@@ -111,23 +111,27 @@
 
 <footer id="site-footer"></footer>
 
+<script src="assets/config.js"></script>
 <script src="assets/data.js"></script>
 <script src="assets/figures.js"></script>
 <script src="assets/site.js"></script>
 <script>
-(function () {
-  var S = window.Site, el = S.el, fmt = S.fmt, D = window.DATA, ST = S.STATS, RM = S.RM;
+window.Site.ready(function () {
+  var S = window.Site, el = S.el, fmt = S.fmt, D = S.data(), ST = S.STATS, RM = S.RM, LIVE = S.isLive();
   var shell = document.getElementById("shell");
   S.embed("mapHeight", shell);
-  S.renderHeader("attack-map.html", S.livePill("demo data · " + fmt(D.mitreTechniqueCount) + " ATT&CK techniques"));
+  S.renderHeader("attack-map.html", S.sourceBadge());
   S.renderFooter();
 
   S.$("total").textContent = S.fig(ST.allTime);
-  S.replace(S.$("feedTag"), S.demoTag("simulated feed"));
+  // Live: arcs replay the most recent real events (country -> node) and the buckets are real counts.
+  // Sample: the feed is simulated and says so.
+  var LIVE_FEED = !!(LIVE && ST.buckets5m && ST.buckets5m.length);
+  S.replace(S.$("feedTag"), LIVE_FEED ? S.demoTag("replay · last " + ((ST.recent || []).length) + " events") : S.demoTag("simulated feed", "Sample data — the feed is simulated until the live API answers"));
 
   // T1.3: one destination only — the single Melbourne node (region-level coordinate).
   var TARGET = { name: D.nodeShort, coord: D.nodeCoord };
-  var ORIGINS = D.origins;
+  var ORIGINS = D.origins.filter(function (o) { return o.coord; });
   // Technique share on the map = the top four queue categories, weighted by their real 24h counts.
   var TECHS = ST.queue.slice(0, 4).map(function (q) { return { id: q.id, name: q.name, color: S.SEV[q.sev], w: Math.round(q.n / ST.total24 * 100) }; });
   var SEV = [{ label: "CRITICAL", color: S.SEV.CRITICAL }, { label: "HIGH", color: S.SEV.HIGH }, { label: "MEDIUM", color: S.SEV.MEDIUM }];
@@ -139,8 +143,9 @@
         el("span", { style: "display:flex;align-items:center;gap:9px;" },
           el("span", { className: "mono", style: "font-size:11px;color:#F2547D;border:1px solid rgba(242,84,125,.35);border-radius:5px;padding:1px 5px;" }, o.cc), o.name),
         el("span", { className: "mono", style: "color:rgba(255,255,255,.55);" }, o.w + "%")),
-      el("div", { className: "bar", style: "margin-top:7px;" }, el("i", { style: "width:" + o.w * 3 + "%;background:linear-gradient(90deg,#F2547D,#C4173F);" })));
+      el("div", { className: "bar", style: "margin-top:7px;" }, el("i", { style: "width:" + Math.min(100, o.w * 3) + "%;background:linear-gradient(90deg,#F2547D,#C4173F);" })));
   }));
+  if (!D.origins.length) S.replace(S.$("origins"), el("p", { style: "font-size:13px;color:rgba(255,255,255,.5);margin:0;" }, "No geolocated events in the last 24 hours."));
   S.replace(S.$("techs"), TECHS.map(function (t) {
     return el("div", null,
       el("div", { style: "display:flex;justify-content:space-between;font-size:13px;" },
@@ -155,6 +160,19 @@
   function newBucket() { clock = new Date(clock.getTime() + 5 * 60000); return { end: new Date(clock), attempts: 0, countries: {}, techs: {}, sev: 2 }; }
   function fmtTime(d) { return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
   function windowLabel(b) { return fmtTime(new Date(b.end.getTime() - 5 * 60000)) + "–" + fmtTime(b.end); }
+  function seedLive() {
+    // Real 5-minute buckets from the feed (last hour). Per-bucket country/technique detail is not
+    // in the payload, so the detail panel shows counts only for live buckets.
+    var bs = ST.buckets5m.slice(-13);
+    buckets = bs.slice(0, -1).map(function (b) {
+      var end = new Date(Date.parse(b.start) + 5 * 60000);
+      return { end: end, attempts: b.n, countries: {}, techs: {}, sev: b.n > 0 ? 1 : 2, live: true };
+    });
+    var cur = bs[bs.length - 1];
+    clock = new Date(Date.parse(cur.start) + 5 * 60000);
+    bucket = { end: new Date(clock), attempts: cur.n, countries: {}, techs: {}, sev: 2, live: true };
+    S.$("livecount").textContent = fmt(bucket.attempts);
+  }
   function seed() {
     clock = new Date(clock.getTime() - 12 * 5 * 60000);
     for (var i = 0; i < 11; i++) {
@@ -169,6 +187,7 @@
     bucket = newBucket();
   }
   function addFeed(a) {
+    if (a.replay) return;                       // real counts come from the feed, not the animation
     bucket.attempts += a.count;
     bucket.countries[a.origin.name] = (bucket.countries[a.origin.name] || 0) + a.count;
     bucket.techs[a.tech.id] = { tech: a.tech, n: ((bucket.techs[a.tech.id] || {}).n || 0) + a.count };
@@ -195,6 +214,17 @@
   }
   function renderDetail(b) {
     if (!b) return;
+    if (b.live) {
+      S.replace(S.$("detail"),
+        el("div", { style: "display:flex;align-items:center;justify-content:space-between;" },
+          el("span", { className: "mono", style: "font-size:12px;color:rgba(255,255,255,.55);" }, windowLabel(b)),
+          S.demoTag("live")),
+        el("div", { style: "display:flex;align-items:baseline;gap:8px;margin-top:10px;" },
+          el("span", { className: "mono", style: "font-size:24px;color:#fff;letter-spacing:-.6px;" }, fmt(b.attempts)),
+          el("span", { style: "font-size:12px;color:rgba(255,255,255,.5);" }, "events in this 5-minute window")),
+        el("div", { style: "margin-top:14px;font-size:12px;line-height:20px;color:rgba(255,255,255,.5);" }, "Per-window country and technique breakdown is not part of the public feed; the panels on the right give the 24-hour view."));
+      return;
+    }
     var countries = Object.keys(b.countries).map(function (k) { return [k, b.countries[k]]; }).sort(function (x, y) { return y[1] - x[1]; });
     var tops = Object.keys(b.techs).map(function (k) { return b.techs[k]; }).sort(function (x, y) { return y.n - x.n; }).slice(0, 2);
     var sev = SEV[b.sev];
@@ -217,9 +247,10 @@
   }
 
   /* ---- globe ---- */
+  var seedFn = LIVE_FEED ? seedLive : seed;
   if (!window.d3 || !window.topojson) {
     S.$("mapFallback").style.display = "flex";
-    seed(); renderBuckets();
+    seedFn(); renderBuckets();
     return;
   }
   var canvas = S.$("globe"), ctx = canvas.getContext("2d");
@@ -251,7 +282,17 @@
     projection.rotate([rot[0] + (e.clientX - lastX) * 0.3, Math.max(-70, Math.min(70, rot[1] - (e.clientY - lastY) * 0.3)), rot[2]]);
     lastX = e.clientX; lastY = e.clientY;
   });
+  var replayIdx = 0, REPLAY = (ST.recent || []).filter(function (r) { return r.coord; });
   function spawn() {
+    if (LIVE_FEED) {
+      if (!REPLAY.length) return;
+      var r = REPLAY[replayIdx++ % REPLAY.length];
+      var sevObj = SEV.filter(function (x) { return x.label === r.sev; })[0] || SEV[2];
+      var techObj = TECHS.filter(function (t) { return t.id === r.tid; })[0] || { id: r.tid, name: r.tid, color: sevObj.color, w: 0 };
+      attacks.push({ origin: { name: r.cc, coord: r.coord }, target: TARGET, tech: techObj, sev: sevObj, count: 0, replay: true, t0: performance.now(), dur: 2600 + Math.random() * 1400, landed: false });
+      if (attacks.length > 26) attacks.shift();
+      return;
+    }
     var origin = pick(ORIGINS), tech = pick(TECHS);
     var sev = SEV[Math.random() < 0.18 ? 0 : Math.random() < 0.6 ? 1 : 2];
     var count = [50, 58, 100, 116, 150, 174, 288][Math.floor(Math.random() * 7)];
@@ -308,12 +349,17 @@
     requestAnimationFrame(frame);
   }
 
-  seed(); renderBuckets(); resize(); requestAnimationFrame(frame);
+  seedFn(); renderBuckets(); resize(); requestAnimationFrame(frame);
   if (!RM) setInterval(spawn, 2100);
-  if (!RM) setInterval(closeWindow, WINDOW_MS);
-  setInterval(function () { S.$("windowProgress").style.width = Math.min(100, (performance.now() - windowStart) / WINDOW_MS * 100) + "%"; }, 400);
+  if (!RM && !LIVE_FEED) setInterval(closeWindow, WINDOW_MS);
+  if (LIVE_FEED) {
+    // progress = position inside the current real 5-minute window; refresh the data every ~5 min
+    setInterval(function () { S.$("windowProgress").style.width = (((Date.now() / 1000) % 300) / 300 * 100) + "%"; }, 1000);
+  } else {
+    setInterval(function () { S.$("windowProgress").style.width = Math.min(100, (performance.now() - windowStart) / WINDOW_MS * 100) + "%"; }, 400);
+  }
   spawn();
-})();
+});
 </script>
 </body>
 </html>

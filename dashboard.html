@@ -115,28 +115,40 @@
 
 <footer id="site-footer"></footer>
 
+<script src="assets/config.js"></script>
 <script src="assets/data.js"></script>
 <script src="assets/figures.js"></script>
 <script src="assets/site.js"></script>
 <script>
-(function () {
-  var S = window.Site, el = S.el, fmt = S.fmt, SEV = S.SEV, ST = S.STATS, RM = S.RM;
+window.Site.ready(function () {
+  var S = window.Site, el = S.el, fmt = S.fmt, SEV = S.SEV, ST = S.STATS, RM = S.RM, LIVE = S.isLive();
   var embedded = S.embed("dashHeight", document.getElementById("shell"));
-  S.renderHeader("dashboard.html", S.livePill("demo data · last 24h"));
+  S.renderHeader("dashboard.html", S.sourceBadge());
   S.renderFooter();
 
   // Subtitle: both numbers come from the same table, so they cannot disagree.
   S.replace(S.$("subtitle"), fmt(ST.total24) + " raw events from the last 24 hours, collapsed into " + ST.categories + " ranked attack categories.");
   S.replace(S.$("queueTitle"), "Priority queue · top " + ST.categories + " categories");
 
-  /* sparkline: purely decorative, deterministic per seed */
-  function spark(color, seed) {
+  /* sparkline: real hourly counts (last 14 h) when the live feed supplies them; otherwise decorative, deterministic per seed */
+  function spark(color, seed, hourly) {
+    if (hourly && hourly.length) {
+      var last = hourly.slice(-14), max = Math.max.apply(null, last.concat([1]));
+      var h2 = el("div", { className: "spark", title: "events per hour, last 14h", "aria-label": "events per hour, last 14 hours" });
+      last.forEach(function (v, i) { h2.appendChild(el("i", { style: "height:" + Math.max(3, Math.round(v / max * 26)) + "px;background:" + color + (i > 10 ? "" : "55") + ";" })); });
+      return h2;
+    }
     var host = el("div", { className: "spark", "data-spark": color, "aria-hidden": "true" });
     for (var i = 0; i < 14; i++) {
       var h = 6 + Math.abs(Math.sin(seed + i * 1.7)) * 20;
       host.appendChild(el("i", { style: "height:" + h.toFixed(0) + "px;background:" + color + (i > 10 ? "" : "55") + ";" }));
     }
     return host;
+  }
+  // KPI sparklines: live → total events per hour across all techniques
+  var kpiHourly = null;
+  if (LIVE && ST.queue.length && ST.queue[0].hourly) {
+    kpiHourly = ST.queue[0].hourly.map(function (_, i) { return ST.queue.reduce(function (s, q) { return s + ((q.hourly || [])[i] || 0); }, 0); });
   }
   function animateSparks() {
     document.querySelectorAll("[data-spark]").forEach(function (sp) {
@@ -152,7 +164,7 @@
   /* KPIs — open cases and critical findings are computed; unique IPs is a PS figure */
   var KPIS = [
     { n: String(ST.openCases), label: "open cases needing review", sub: ST.cases.length + " investigations in the last 7 days", color: "#C4173F", accent: "rgba(255,59,92,.16)" },
-    { n: fmt(ST.critical24), label: "critical findings · 24h", sub: "events in categories rated CRITICAL", color: "#F2547D", accent: "rgba(242,84,125,.14)" },
+    { n: fmt(ST.critical24), label: "critical findings · 24h", sub: LIVE ? "events rated CRITICAL, last 24h" : "events in categories rated CRITICAL", color: "#F2547D", accent: "rgba(242,84,125,.14)" },
     { n: S.fig(ST.uniqueIps24h), label: "unique attacker IPs · 24h", sub: S.isFilled(ST.uniqueIps24h) ? "distinct source addresses" : "awaiting live figure", color: "#F2547D", accent: "rgba(242,84,125,.16)" }
   ];
   S.replace(S.$("kpis"), KPIS.map(function (k, i) {
@@ -161,7 +173,7 @@
         el("div", { className: "kpi-n", style: "font-size:" + (i === 0 ? 54 : 44) + "px;color:" + k.color + ";" }, k.n),
         el("div", { className: "eyebrow", style: "margin-top:8px;" }, k.label),
         el("div", { style: "margin-top:6px;font-size:13px;color:rgba(255,255,255,.5);" }, k.sub)),
-      spark(k.color, i * 3.1));
+      spark(k.color, i * 3.1, kpiHourly));
   }));
 
   /* Priority queue */
@@ -197,7 +209,7 @@
             el("span", { className: "chip", style: "border:1px solid " + SEV[q.sev] + "55;color:" + SEV[q.sev] + ";" }, q.sev)),
           el("div", { className: "row-sub" }, q.tactic + " · " + q.ips + " attacker IPs · " + q.countries + " countries · " + q.ago + " · " + q.read)),
         el("div", { className: "row-right", style: "display:flex;align-items:center;gap:18px;" },
-          spark(SEV[q.sev], i * 2.3),
+          spark(SEV[q.sev], i * 2.3, q.hourly),
           el("div", { style: "text-align:right;min-width:78px;" },
             el("div", { className: "mono", style: "font-size:17px;color:#fff;" }, fmt(q.n)),
             el("div", { style: "font-size:11px;color:rgba(255,255,255,.4);margin-top:3px;" }, "events")),
@@ -215,21 +227,21 @@
       el("div", { className: "bar", style: "margin-top:8px;" }, el("i", { style: "width:" + Math.max(2, Math.round(t.n / maxN * 100)) + "%;background:" + SEV[t.sev] + ";" })));
   }));
 
-  /* Attack volume — illustrative shape only (no live feed yet) */
-  S.replace(S.$("volTag"), S.demoTag("illustrative"));
-  var volHost = S.$("vol"), vol = [];
-  for (var i = 0; i < 48; i++) vol.push(40 + Math.abs(Math.sin(i / 3.2)) * 55 + Math.random() * 18);
+  /* Attack volume — real 30-minute buckets from the feed; illustrative shape only when on sample data */
+  var volHost = S.$("vol"), vol = [], volLive = !!(LIVE && ST.buckets30m && ST.buckets30m.length);
+  if (volLive) { vol = ST.buckets30m.slice(-48).map(function (b) { return b.n; }); }
+  else { S.replace(S.$("volTag"), S.demoTag("illustrative", "Sample data — shape is illustrative until the live feed answers")); for (var i = 0; i < 48; i++) vol.push(40 + Math.abs(Math.sin(i / 3.2)) * 55 + Math.random() * 18); }
   function paintVol() {
-    var max = Math.max.apply(null, vol);
+    var max = Math.max.apply(null, vol.concat([1]));
     S.replace(volHost, vol.map(function (v, i) {
-      var h = Math.max(6, v / max * 116), hot = i > 43;
-      return el("i", { style: "height:" + h.toFixed(0) + "px;background:" + (hot ? "linear-gradient(180deg,#C4173F,#F2547D)" : "linear-gradient(180deg,rgba(242,84,125,.85),rgba(242,84,125,.25))") + ";" });
+      var h = Math.max(volLive ? 2 : 6, v / max * 116), hot = i > vol.length - 5;
+      return el("i", { title: volLive ? fmt(v) + " events" : null, style: "height:" + h.toFixed(0) + "px;background:" + (hot ? "linear-gradient(180deg,#C4173F,#F2547D)" : "linear-gradient(180deg,rgba(242,84,125,.85),rgba(242,84,125,.25))") + ";" });
     }));
-    S.$("volNow").textContent = fmt(Math.round(vol[vol.length - 1]));
+    S.$("volNow").textContent = fmt(Math.round(vol[vol.length - 1] || 0));
   }
   paintVol();
-  if (!RM) setInterval(function () { vol.shift(); var last = vol[vol.length - 1]; vol.push(Math.max(22, Math.min(140, last + (Math.random() - 0.45) * 34))); paintVol(); }, 1600);
-  if (!RM) setInterval(animateSparks, 1200);
+  if (!RM && !volLive) setInterval(function () { vol.shift(); var last = vol[vol.length - 1]; vol.push(Math.max(22, Math.min(140, last + (Math.random() - 0.45) * 34))); paintVol(); }, 1600);
+  if (!RM && !LIVE) setInterval(animateSparks, 1200);
 
   /* Severity mix — computed from the queue rows */
   var mixRows = S.SEV_ORDER.filter(function (s) { return ST.bySev[s] > 0; }).map(function (s) {
@@ -256,7 +268,8 @@
         el("span", { className: "chip", style: "border:1px solid " + SEV[c.sev] + "55;color:" + SEV[c.sev] + ";" }, c.sev),
         el("div", { className: "mono", style: "font-size:11px;color:rgba(255,255,255,.4);margin-top:5px;" }, c.id)));
   }));
-})();
+  if (!ST.queue.length) S.replace(S.$("queue"), el("p", { style: "padding:24px 18px;font-size:14px;color:rgba(255,255,255,.55);" }, "No honeypot events in the last 24 hours."));
+});
 </script>
 </body>
 </html>

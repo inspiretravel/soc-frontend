@@ -77,18 +77,20 @@
 
 <footer id="site-footer"></footer>
 
+<script src="assets/config.js"></script>
 <script src="assets/data.js"></script>
 <script src="assets/figures.js"></script>
 <script src="assets/site.js"></script>
 <script>
-(function () {
-  var S = window.Site, el = S.el, fmt = S.fmt, D = window.DATA, ST = S.STATS;
+window.Site.ready(function () {
+  var S = window.Site, el = S.el, fmt = S.fmt, D = S.data(), ST = S.STATS;
   S.embed("refHeight", document.body);
-  S.renderHeader("reference.html", S.livePill("demo data · 24h"));
+  S.renderHeader("reference.html", S.sourceBadge());
   S.renderFooter();
 
-  var ST_COLOR = { EVIDENCED: "#C4173F", PARTIAL: "#FFA85C", CLEAR: "#5FE3B0" };
-  var LABEL = { EVIDENCED: "EVIDENCED", PARTIAL: "PARTIAL", CLEAR: "NO EVIDENCE" };
+  // Status is DERIVED from evidence, two states only (docs/FIELD_MAPPING.md §G): n > 0 → EVIDENCED, else NO EVIDENCE.
+  var ST_COLOR = { EVIDENCED: "#C4173F", CLEAR: "#5FE3B0" };
+  var LABEL = { EVIDENCED: "EVIDENCED", CLEAR: "NO EVIDENCE" };
 
   S.replace(S.$("intro"), "Your honeypot evidence is already mapped against " + fmt(D.mitreTechniqueCount) + " MITRE ATT&CK Enterprise techniques. Choose the scheme you report against and we fill the threat assessment from the same findings — no re-typing, no invented controls.");
 
@@ -98,8 +100,17 @@
       var n = c.from ? S.tokenValue(c.from) : 0;
       var out = {}; Object.keys(c).forEach(function (k) { out[k] = c[k]; });
       out.n = typeof n === "number" ? n : 0; out.line = S.fill(c.line);
+      out.status = out.n > 0 ? "EVIDENCED" : "CLEAR";
       return out;
     });
+    // Rating is DERIVED: worst severity among evidenced techniques in the last 24h.
+    var evidTids = controls.filter(function (c) { return c.status === "EVIDENCED"; }).map(function (c) { return c.from; });
+    var worst = 0; ST.queue.forEach(function (q) { if (evidTids.indexOf(q.id) >= 0 || evidTids.indexOf("CRED") >= 0 && (q.id === "T1110" || q.id === "T1078")) worst = Math.max(worst, S.SEV_ORDER.length - S.SEV_ORDER.indexOf(q.sev)); });
+    var critN = ST.queue.filter(function (q) { return q.sev === "CRITICAL"; }).length, highN = ST.queue.filter(function (q) { return q.sev === "HIGH"; }).length;
+    var rating = critN ? "HIGH" : highN ? "MEDIUM" : ST.queue.length ? "LOW" : "NONE";
+    var ratingWhy = critN ? critN + " technique" + (critN === 1 ? "" : "s") + " observed at CRITICAL severity in the last 24 hours." :
+                    highN ? highN + " technique" + (highN === 1 ? "" : "s") + " observed at HIGH severity in the last 24 hours; nothing critical." :
+                    ST.queue.length ? "Only low/medium-severity activity in the last 24 hours." : "No honeypot events in the last 24 hours.";
     var max = Math.max.apply(null, controls.map(function (c) { return c.n; }).concat([1]));
     controls.forEach(function (c) { c.w = Math.round(c.n / max * 100); });
     var stats;
@@ -107,7 +118,7 @@
     else if (f.key === "e8") stats = [["Strategies mapped", controls.length + " of 8"]];
     else if (f.key === "nist") stats = [["Functions covered", "6 of 6"]];
     else stats = [["Annex A controls", controls.length + " cited"]];
-    return { key: f.key, name: f.name, sub: S.fill(f.sub), scope: S.fill(f.scope), rating: f.rating, ratingWhy: f.ratingWhy, controls: controls, stats: stats };
+    return { key: f.key, name: f.name, sub: S.fill(f.sub), scope: S.fill(f.scope), rating: rating, ratingWhy: ratingWhy, controls: controls, stats: stats };
   });
 
   var fw = 0, csel = 0;
@@ -158,7 +169,7 @@
   function renderDoc(f, quick) {
     var gaps = f.controls.filter(function (c) { return c.status === "CLEAR"; });
     var sel = f.controls[csel];
-    var sevColor = f.rating === "HIGH" ? "#C4173F" : f.rating === "PARTIAL" ? "#F2547D" : "#6BC7F2";
+    var sevColor = f.rating === "HIGH" ? "#C4173F" : f.rating === "MEDIUM" ? "#FFA85C" : "#6BC7F2";
     S.replace(S.$("doc"),
       el("section", { style: "animation-delay:0ms;" }, el("h4", null, "Scope"), el("p", null, f.scope)),
       el("hr"),
@@ -169,7 +180,7 @@
         el("div", { style: "display:flex;align-items:center;gap:12px;flex-wrap:wrap;" },
           el("span", { className: "chip", style: "border:1px solid " + sevColor + "66;color:" + sevColor + ";font-size:12px;padding:5px 10px;" }, f.rating),
           el("span", { style: "font-size:13px;color:rgba(255,255,255,.6);" },
-            f.controls.filter(function (c) { return c.status === "EVIDENCED"; }).length + " evidenced · " + f.controls.filter(function (c) { return c.status === "PARTIAL"; }).length + " partial · " + gaps.length + " need external input")),
+            f.controls.filter(function (c) { return c.status === "EVIDENCED"; }).length + " evidenced · " + gaps.length + " no evidence in this window")),
         el("p", { style: "margin-top:10px;" }, f.ratingWhy)),
       el("hr"),
       el("section", { style: "animation-delay:360ms;" }, el("h4", null, "Cannot be answered from this evidence"),
@@ -190,9 +201,8 @@
     S.$("covTitle").textContent = "Coverage · " + f.sub;
     S.$("ctrlTitle").textContent = f.key === "attack" ? "Techniques assessed" : f.key === "e8" ? "Mitigation strategies assessed" : "Controls assessed";
     var evid = f.controls.filter(function (c) { return c.status === "EVIDENCED"; }).length;
-    var part = f.controls.filter(function (c) { return c.status === "PARTIAL"; }).length;
     var gaps = f.controls.filter(function (c) { return c.status === "CLEAR"; }).length;
-    var stats = [f.stats[0], ["Evidenced", String(evid)], ["Partial", String(part)], ["Need external input", String(gaps)]];
+    var stats = [f.stats[0], ["Evidenced", String(evid)], ["No evidence", String(gaps)]];
     S.replace(S.$("covStats"), stats.map(function (s) {
       return el("div", { style: "text-align:right;" }, el("div", { className: "mono", style: "font-size:18px;color:#fff;" }, s[1]),
         el("div", { style: "font-size:11px;color:rgba(255,255,255,.4);white-space:nowrap;" }, s[0]));
@@ -202,7 +212,7 @@
   }
 
   render();
-})();
+});
 </script>
 </body>
 </html>

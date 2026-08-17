@@ -13,7 +13,9 @@ recomputes the same derived figures the pages compute, and enforces:
   IDs   every MITRE technique ID is well-formed and links resolve to a real technique
         (checked against the local STIX cache when available)
 
-Run:  python check_invariants.py          -> exit 0 = OK, exit 1 = reject
+Run:  python check_invariants.py                     -> checks the built-in sample (data.js/figures.js)
+      python check_invariants.py --live <URL|file>     -> checks a live /api/public/attacks payload
+Exit 0 = OK, exit 1 = reject.
 """
 import json
 import re
@@ -32,6 +34,74 @@ def load_js_object(path, begin, end):
 errors, warns = [], []
 def fail(msg): errors.append(msg)
 def warn(msg): warns.append(msg)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LIVE MODE — validate the real /api/public/attacks payload and exit.
+# ─────────────────────────────────────────────────────────────────────────────
+if len(sys.argv) >= 3 and sys.argv[1] == "--live":
+    src = sys.argv[2]
+    if src.startswith("http"):
+        import urllib.request
+        with urllib.request.urlopen(src, timeout=15) as r:
+            payload = json.loads(r.read().decode("utf-8"))
+    else:
+        payload = json.loads(Path(src).read_text(encoding="utf-8"))
+    fig = payload.get("figures", {})
+    queue = payload.get("queue", [])
+    cases = payload.get("cases", [])
+    total24 = sum(q["n"] for q in queue)
+    print(f"LIVE payload generated_at={payload.get('generated_at')}  categories={len(queue)}  24h total={total24:,}")
+    print(f"  all_time_total={fig.get('all_time_total')}  unique_ips_24h={fig.get('unique_ips_24h')}  critical_24h={fig.get('critical_24h')}  open_cases={fig.get('open_cases')}  unmapped_24h={fig.get('unmapped_24h')}")
+    for k in ("all_time_total", "unique_ips_24h"):
+        if not isinstance(fig.get(k), int): fail(f"PS figure {k} missing from live payload")
+    if isinstance(fig.get("all_time_total"), int) and fig["all_time_total"] < total24:
+        fail(f"INV1: all-time {fig['all_time_total']:,} < 24h {total24:,}")
+    if fig.get("unmapped_24h"):
+        fail(f"INV2: {fig['unmapped_24h']} events in the last 24h have no technique_id (excluded from categories) — add an 'Other' row or fix the parser")
+    for q in queue:
+        if q["n"] <= 0: fail(f"INV2: {q['id']} non-positive count")
+        if sum(m["n"] for m in q.get("members", [])) > q["n"]: fail(f"INV2: members exceed category {q['id']}")
+        if len(q.get("hourly", [])) not in (0, 24): fail(f"hourly length for {q['id']} is {len(q['hourly'])}")
+    # INV3 holds by construction (dashboard 'What they're trying' renders the same queue rows).
+    print(f"  cases (7d): {len(cases)}   <- INV4: labelled distinctly from the {len(queue)} categories")
+    for c in cases:
+        ev = sum(g["n"] for g in c.get("groups", []))
+        if ev > c["finding_count"]:
+            fail(f"INV5: {c['title']} evidence groups sum {ev} > finding_count {c['finding_count']}")
+        s_ = c.get("ai_summary")
+        if s_:
+            stale = s_.get("written_at_findings", 0) < c["finding_count"]
+            prose = " ".join([s_.get("happening", ""), s_.get("matters", ""), s_.get("next", "")])
+            nums = {int(x.replace(",", "")) for x in re.findall(r"\d{1,3}(?:,\d{3})+|\d{2,}", prose)}
+            allowed = {c["finding_count"], ev} | {g["n"] for g in c.get("groups", [])} | {len({g["ip"] for g in c.get("groups", [])})}
+            bytech = {}
+            for g in c.get("groups", []): bytech[g["tid"]] = bytech.get(g["tid"], 0) + g["n"]
+            allowed |= set(bytech.values())
+            for num in nums:
+                if num >= 30 and num not in allowed and num != 2026:
+                    (warn if stale else fail)(f"INV5{' (stale summary, WARN)' if stale else ''}: {c['title']} prose mentions {num:,}; evidence figures are {sorted(allowed)}")
+        print(f"  {c['title']}: {c['finding_count']:,} events, {len(c.get('groups', []))} groups, summary={'yes' if s_ else 'none'}"
+              + (f" (written at {s_['written_at_findings']} events)" if s_ else ""))
+    # MITRE IDs present in the live payload
+    ids = {q["id"] for q in queue} | {g["tid"] for c in cases for g in c.get("groups", [])} | {p["tid"] for c in cases for p in c.get("phases", [])}
+    bad = [i for i in ids if not re.fullmatch(r"T\d{4}(\.\d{3})?", i or "")]
+    for b in bad: fail(f"MITRE: malformed technique ID {b!r} in live payload")
+    if STIX_CACHE.exists():
+        stix = json.loads(STIX_CACHE.read_text(encoding="utf-8"))
+        real = {ref["external_id"] for o in stix["objects"] if o.get("type") == "attack-pattern" and not o.get("revoked") and not o.get("x_mitre_deprecated")
+                for ref in o.get("external_references", []) if ref.get("source_name") == "mitre-attack"}
+        for i in sorted(ids):
+            if i and i not in real: fail(f"MITRE: {i} not an active Enterprise technique")
+    # security: nothing that should never be public
+    dumped = json.dumps(payload)
+    for pat in (r"sk-ant-", r"ipattern\.co", r"localhost", r"127\.0\.0\.1", r"raw_input", r"password", r"api[_-]?key"):
+        if re.search(pat, dumped, re.I): fail(f"SECURITY: live payload contains {pat}")
+    for w in warns: print("WARN:", w)
+    if errors:
+        print("REJECT - %d problem(s):" % len(errors)); [print("  x", e) for e in errors]; sys.exit(1)
+    print("OK - live payload satisfies INV1-INV5 (INV5 warnings, if any, are stale-summary notes)."); sys.exit(0)
+
 
 data = load_js_object(ROOT / "assets" / "data.js", "/* DATA_BEGIN */", "/* DATA_END */")
 figs = load_js_object(ROOT / "assets" / "figures.js", "/* FIGURES_BEGIN */", "/* FIGURES_END */")

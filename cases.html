@@ -30,7 +30,7 @@
   .evbar { height: 3px; border-radius: 2px; margin-top: 7px; width: 0; transition: width .9s cubic-bezier(.22,1,.36,1); }
   .split { display: flex; height: 8px; border-radius: 5px; overflow: hidden; background: rgba(255,255,255,.07); }
   .split i { display: block; width: 0; transition: width .9s cubic-bezier(.22,1,.36,1); }
-  .facts { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 18px; }
+  .facts { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 18px; }
   .fact-v { margin-top: 7px; font-family: Archivo, sans-serif; font-size: 22px; font-weight: 600; color: #fff; }
   .ev { display: grid; grid-template-columns: 88px 1fr auto; gap: 14px; align-items: center; padding: 12px 4px; border-bottom: 1px solid rgba(255,255,255,.06); }
   .unfold { display: grid; grid-template-columns: minmax(0,1fr) 440px; gap: 34px; align-items: start; }
@@ -59,16 +59,21 @@
 
 <footer id="site-footer"></footer>
 
+<script src="assets/config.js"></script>
 <script src="assets/data.js"></script>
 <script src="assets/figures.js"></script>
 <script src="assets/site.js"></script>
 <script>
-(function () {
-  var S = window.Site, el = S.el, fmt = S.fmt, SEV = S.SEV, D = window.DATA, RM = S.RM;
-  var CASES = S.STATS.cases;   // findings / ips / techniques already computed from the evidence tables
+window.Site.ready(function () {
+  var S = window.Site, el = S.el, fmt = S.fmt, SEV = S.SEV, D = S.data(), RM = S.RM, LIVE = S.isLive();
+  var CASES = S.STATS.cases;   // findings / ips / techniques computed from the evidence tables (or case totals when live)
   S.embed("casesHeight", document.getElementById("shell"));
-  S.renderHeader("cases.html", S.livePill(S.STATS.openCases + " open investigations"));
+  S.renderHeader("cases.html", el("span", { style: "display:flex;gap:14px;align-items:center;" }, S.sourceBadge(), S.livePill(S.STATS.openCases + " open investigations")));
   S.renderFooter();
+  if (!CASES.length) {
+    S.replace(S.$("report"), el("section", { className: "panel", style: "padding:28px;" }, el("p", { style: "margin:0;font-size:15px;color:rgba(255,255,255,.6);" }, "No honeypot cases in the last 7 days.")));
+    return;
+  }
 
   var sel = 0;
   var hash = (location.hash || "").replace("#", "");
@@ -123,7 +128,7 @@
             el("p", { style: "margin:8px 0 0;font-size:14px;color:rgba(255,255,255,.5);" }, c.window + " · " + D.node),
             el("p", { className: "disclaimer", style: "margin-top:12px;" }, S.DISCLAIMER))),
         el("div", { className: "facts", style: "margin-top:26px;padding-top:22px;border-top:1px solid rgba(255,255,255,.08);" },
-          fact("Duration", c.dur), fact("Raw events", fmt(c.findings)), fact("Attacker IPs", c.ips), fact("Techniques", c.techniques), fact("Confidence", c.confidence)),
+          fact("Duration", c.dur || "—"), fact("Raw events", fmt(c.findings)), fact("Attacker IPs", c.ips), fact("Techniques", c.techniques)),
         el("div", { style: "margin-top:24px;padding-top:22px;border-top:1px solid rgba(255,255,255,.08);" },
           el("div", { className: "eyebrow" }, "What they were trying"),
           el("div", { style: "margin-top:14px;" }, split), splitKey,
@@ -132,11 +137,16 @@
       el("section", { className: "panel", style: "padding:28px 30px;animation-delay:60ms;" },
         el("div", { className: "unfold" },
           el("div", { style: "display:flex;flex-direction:column;gap:26px;" },
-            el("div", null, el("h3", null, "What happened"), el("p", null, c.happened)),
-            el("div", { style: "height:1px;background:rgba(255,255,255,.07);" }),
-            el("div", null, el("h3", null, "Why it matters"), el("p", null, c.matters)),
-            el("div", { style: "height:1px;background:rgba(255,255,255,.07);" }),
-            el("div", null, el("h3", null, "What to do next"), el("p", null, c.next))),
+            c.happened === null ? el("div", null, el("h3", null, "Not yet triaged"),
+                el("p", null, "The AI summary for this case has not been generated. Summaries are written from the analyst console and served here exactly as stored — this public site never calls the model.")) : [
+              el("div", null, el("h3", null, "What happened"), el("p", null, c.happened)),
+              el("div", { style: "height:1px;background:rgba(255,255,255,.07);" }),
+              el("div", null, el("h3", null, "Why it matters"), el("p", null, c.matters)),
+              el("div", { style: "height:1px;background:rgba(255,255,255,.07);" }),
+              el("div", null, el("h3", null, "What to do next"), el("p", null, c.next)),
+              (typeof c.writtenAtFindings === "number" && c.writtenAtFindings < c.findings)
+                ? el("p", { style: "font-size:12px;color:#FFD9A8;" }, "Written when the case had " + fmt(c.writtenAtFindings) + " of its current " + fmt(c.findings) + " events — figures in the prose may lag the evidence table.")
+                : null ]),
           el("div", { className: "replay" },
             el("div", { style: "position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,16,46,.72),rgba(20,16,46,.86));" }),
             term,
@@ -144,7 +154,7 @@
             el("span", { style: "position:absolute;top:10px;right:12px;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:rgba(255,255,255,.4);" }, "attacker session · illustrative replay")))),
 
       el("section", { className: "panel", style: "padding:24px 26px;animation-delay:120ms;" },
-        el("div", { className: "eyebrow" }, "How it unfolded"),
+        el("div", { className: "eyebrow" }, LIVE ? "How it unfolded · first seen, by technique" : "How it unfolded"),
         el("div", { style: "margin-top:20px;display:flex;flex-direction:column;" }, c.phases.map(function (p, i) {
           var last = i === c.phases.length - 1;
           return el("div", { style: "display:grid;grid-template-columns:82px 18px minmax(0,1fr);gap:14px;" },
@@ -160,7 +170,7 @@
       el("section", { className: "panel", style: "padding:24px 26px;animation-delay:180ms;" },
         el("div", { style: "display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;" },
           el("div", { className: "eyebrow" }, "Evidence · grouped events"),
-          el("span", { style: "font-size:12px;color:rgba(255,255,255,.4);" }, c.events.length + " groups · " + fmt(c.findings) + " raw events")),
+          el("span", { style: "font-size:12px;color:rgba(255,255,255,.4);" }, c.events.length + " groups · " + fmt(c.evidenceTotal) + " raw events")),
         el("div", { style: "margin-top:14px;" }, c.events.map(function (ev) {
           return el("div", { className: "ev" },
             el("span", { className: "chip", style: "border:1px solid " + SEV[ev.sev] + "55;color:" + SEV[ev.sev] + ";text-align:center;" }, ev.sev),
@@ -209,7 +219,7 @@
 
   renderList();
   renderReport();
-})();
+});
 </script>
 </body>
 </html>

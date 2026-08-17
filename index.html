@@ -161,7 +161,7 @@
         <a href="about.html">About</a>
       </nav>
     </div>
-    <a class="cta-link" href="dashboard.html" style="font-size:14px;">Open the dashboard →</a>
+    <div style="display:flex;align-items:center;gap:18px;"><span id="srcBadge"></span><a class="cta-link" href="dashboard.html" style="font-size:14px;">Open the dashboard →</a></div>
   </header>
 
   <section class="hero wrap" aria-labelledby="h1">
@@ -307,13 +307,15 @@
 
 <footer id="site-footer"></footer>
 
+<script src="assets/config.js"></script>
 <script src="assets/data.js"></script>
 <script src="assets/figures.js"></script>
 <script src="assets/site.js"></script>
 <script>
-(function () {
-  var S = window.Site, el = S.el, fmt = S.fmt, ST = S.STATS, D = window.DATA, RM = S.RM;
+window.Site.ready(function () {
+  var S = window.Site, el = S.el, fmt = S.fmt, ST = S.STATS, D = S.data(), RM = S.RM;
   S.renderFooter();
+  S.replace(S.$("srcBadge"), S.sourceBadge());
   S.replace(S.$("brand"), S.logo(30));   // same logo builder as the subpages
 
   /* ---- hero: pain → solution headline, typed ---- */
@@ -354,7 +356,7 @@
       countTo(S.$("stat1"), ST.allTime, 1600);
       countTo(S.$("stat2"), D.mitreTechniqueCount, 1400);
       countTo(S.$("stat3"), ST.total24, 1500);
-      countTo(S.$("stat4"), ST.cases.length, 1200);
+      countTo(S.$("stat4"), ST.aiWrittenCases, 1200);
     }
   }, { threshold: 0.2 });
   sio.observe(statsEl);
@@ -419,7 +421,7 @@
   S.$("closeZoom").addEventListener("click", function () { zoomOpen = false; sync(); S.$("openZoom").focus(); });
   window.addEventListener("keydown", function (e) { if (e.key === "Escape" && zoomOpen) { zoomOpen = false; sync(); S.$("openZoom").focus(); } });
   sync();
-})();
+});
 </script>
 </body>
 </html>

@@ -28,7 +28,7 @@ window.DATA = /* DATA_BEGIN */ {
 
   "queue": [
     { "id": "T1190", "name": "Exploit public-facing application", "sev": "CRITICAL", "tactic": "Initial access", "n": 98824, "ips": 4, "countries": 3, "ago": "1m ago",
-      "read": "Same payload family from four hosts — one coordinated campaign, not four incidents.",
+      "read": "Attempts to exploit an exposed service — check whether you actually run what they are aiming at.",
       "members": [ { "ip": "34.78.74.222", "c": "Belgium", "n": 576, "ago": "1m" }, { "ip": "34.77.48.240", "c": "Belgium", "n": 288, "ago": "2m" }, { "ip": "180.181.251.100", "c": "Australia", "n": 288, "ago": "4m" }, { "ip": "71.6.232.28", "c": "United States", "n": 288, "ago": "6m" } ] },
     { "id": "T1021.002", "name": "SMB / Windows admin shares", "sev": "CRITICAL", "tactic": "Lateral movement", "n": 42084, "ips": 1, "countries": 1, "ago": "1m ago",
       "read": "Post-compromise behaviour. This is the one to look at first.",
@@ -162,53 +162,49 @@ window.DATA = /* DATA_BEGIN */ {
   "frameworks": [
     { "key": "attack", "name": "MITRE ATT&CK", "sub": "Enterprise · {NTECHDB} techniques",
       "scope": "This assessment covers {NODE}, observed over 24 hours, mapped against MITRE ATT&CK Enterprise.",
-      "rating": "HIGH", "ratingWhy": "Two techniques observed at critical severity, including post-compromise lateral movement.",
       "controls": [
-        { "id": "T1190", "name": "Exploit public-facing application", "tactic": "Initial access", "status": "EVIDENCED", "from": "T1190", "line": "Exploitation of a public-facing application was observed {T1190} times from 4 addresses across 3 countries, all sharing one request signature." },
-        { "id": "T1021.002", "name": "SMB / Windows admin shares", "tactic": "Lateral movement", "status": "EVIDENCED", "from": "T1021.002", "line": "Lateral movement via Windows admin shares was observed {T1021.002} times from a single address, indicating post-compromise behaviour rather than initial probing." },
-        { "id": "T1110", "name": "Brute force", "tactic": "Credential access", "status": "EVIDENCED", "from": "T1110", "line": "Credential brute force was observed {T1110} times against a single account name drawn from a public breach list." },
-        { "id": "T1078", "name": "Valid accounts", "tactic": "Persistence", "status": "PARTIAL", "from": "T1078", "line": "Attempts to reuse valid credentials were observed {T1078} times; none succeeded against the honeypot." },
-        { "id": "T1046", "name": "Network service discovery", "tactic": "Discovery", "status": "EVIDENCED", "from": "T1046", "line": "Service discovery preceded exploitation in 6 of 7 sessions, typically within 4 minutes of first contact." },
-        { "id": "T1105", "name": "Ingress tool transfer", "tactic": "Command and control", "status": "PARTIAL", "from": "T1105", "line": "Second-stage payload retrieval was attempted {T1105} times and failed; the request returned 404." },
-        { "id": "T1566", "name": "Phishing", "tactic": "Initial access", "status": "CLEAR", "from": null, "line": "No phishing activity is observable from a honeypot of this type; assess separately." }
+        { "id": "T1190", "name": "Exploit public-facing application", "tactic": "Initial access", "from": "T1190", "line": "Exploitation of a public-facing application was observed {T1190} times from {T1190.ips} address(es) across {T1190.countries} countr(y/ies) in the last 24 hours." },
+        { "id": "T1021.002", "name": "SMB / Windows admin shares", "tactic": "Lateral movement", "from": "T1021.002", "line": "Lateral movement via Windows admin shares was observed {T1021.002} times from a single address, indicating post-compromise behaviour rather than initial probing." },
+        { "id": "T1110", "name": "Brute force", "tactic": "Credential access", "from": "T1110", "line": "Credential brute force was observed {T1110} times in the last 24 hours." },
+        { "id": "T1078", "name": "Valid accounts", "tactic": "Persistence", "from": "T1078", "line": "Attempts to reuse valid credentials were observed {T1078} times in the last 24 hours." },
+        { "id": "T1046", "name": "Network service discovery", "tactic": "Discovery", "from": "T1046", "line": "{T1046} network service discovery events were observed in the last 24 hours — mapping what is listening, usually the step before an exploit." },
+        { "id": "T1105", "name": "Ingress tool transfer", "tactic": "Command and control", "from": "T1105", "line": "Second-stage payload retrieval (ingress tool transfer) was attempted {T1105} times in the last 24 hours." },
+        { "id": "T1566", "name": "Phishing", "tactic": "Initial access", "from": null, "line": "No phishing activity is observable from a honeypot of this type; assess separately." }
       ] },
     { "key": "e8", "name": "Essential Eight", "sub": "ACSC · maturity level 2 target",
       "scope": "This assessment maps 24 hours of honeypot evidence from {NODE} to the ACSC Essential Eight, assessed against maturity level 2.",
-      "rating": "PARTIAL", "ratingWhy": "Two mitigation strategies show directly relevant attack pressure with no compensating evidence.",
       "controls": [
-        { "id": "E8", "name": "Application control", "tactic": "Mitigation strategy", "status": "PARTIAL", "from": "T1105", "line": "One second-stage binary retrieval was attempted; application control would prevent execution if retrieval succeeded." },
-        { "id": "E8", "name": "Patch applications", "tactic": "Mitigation strategy", "status": "EVIDENCED", "from": "T1190", "line": "{T1190} exploitation attempts targeted a public-facing application, making application patching the single highest-value control for this exposure." },
-        { "id": "E8", "name": "Configure Microsoft Office macro settings", "tactic": "Mitigation strategy", "status": "CLEAR", "from": null, "line": "Not observable from network-facing honeypot evidence; assess from endpoint telemetry." },
-        { "id": "E8", "name": "User application hardening", "tactic": "Mitigation strategy", "status": "CLEAR", "from": null, "line": "Not observable from this evidence source; assess from browser and endpoint configuration." },
-        { "id": "E8", "name": "Restrict administrative privileges", "tactic": "Mitigation strategy", "status": "EVIDENCED", "from": "T1021.002", "line": "Admin-share access attempts ({T1021.002}) indicate privilege restriction is the controlling factor once an attacker is inside." },
-        { "id": "E8", "name": "Patch operating systems", "tactic": "Mitigation strategy", "status": "EVIDENCED", "from": "T1021.002", "line": "SMB service abuse ({T1021.002} attempts) maps directly to operating system patch currency for exposed hosts." },
-        { "id": "E8", "name": "Multi-factor authentication", "tactic": "Mitigation strategy", "status": "EVIDENCED", "from": "CRED", "line": "{CRED} credential-based attempts were recorded; multi-factor authentication would neutralise every one of them." },
-        { "id": "E8", "name": "Regular backups", "tactic": "Mitigation strategy", "status": "PARTIAL", "from": null, "line": "No destructive activity observed, but lateral movement pressure makes restore testing a stated recommendation." }
+        { "id": "E8", "name": "Application control", "tactic": "Mitigation strategy", "from": "T1105", "line": "{T1105} second-stage binary retrieval attempt(s) were observed; application control would prevent execution if retrieval succeeded." },
+        { "id": "E8", "name": "Patch applications", "tactic": "Mitigation strategy", "from": "T1190", "line": "{T1190} exploitation attempts targeted a public-facing application, making application patching the single highest-value control for this exposure." },
+        { "id": "E8", "name": "Configure Microsoft Office macro settings", "tactic": "Mitigation strategy", "from": null, "line": "Not observable from network-facing honeypot evidence; assess from endpoint telemetry." },
+        { "id": "E8", "name": "User application hardening", "tactic": "Mitigation strategy", "from": null, "line": "Not observable from this evidence source; assess from browser and endpoint configuration." },
+        { "id": "E8", "name": "Restrict administrative privileges", "tactic": "Mitigation strategy", "from": "T1021.002", "line": "Admin-share access attempts ({T1021.002}) indicate privilege restriction is the controlling factor once an attacker is inside." },
+        { "id": "E8", "name": "Patch operating systems", "tactic": "Mitigation strategy", "from": "T1021.002", "line": "SMB service abuse ({T1021.002} attempts) maps directly to operating system patch currency for exposed hosts." },
+        { "id": "E8", "name": "Multi-factor authentication", "tactic": "Mitigation strategy", "from": "CRED", "line": "{CRED} credential-based attempts were recorded; multi-factor authentication would neutralise every one of them." },
+        { "id": "E8", "name": "Regular backups", "tactic": "Mitigation strategy", "from": null, "line": "Not observable from this evidence source; lateral movement pressure ({T1021.002} SMB attempts) makes restore testing a stated recommendation." }
       ] },
     { "key": "nist", "name": "NIST CSF 2.0", "sub": "6 functions · 22 categories",
       "scope": "This assessment expresses 24 hours of honeypot evidence from {NODE} against the NIST Cybersecurity Framework 2.0 functions.",
-      "rating": "HIGH", "ratingWhy": "Detect and Respond are well evidenced; Protect shows exploitable exposure.",
       "controls": [
-        { "id": "ID.RA", "name": "Risk assessment", "tactic": "Identify", "status": "EVIDENCED", "from": "NTECH", "line": "{NTECH} distinct techniques observed in 24 hours provide a measured, current threat profile for the exposed estate." },
-        { "id": "PR.PS", "name": "Platform security", "tactic": "Protect", "status": "EVIDENCED", "from": "T1190", "line": "Exploitation pressure against a public-facing platform dominates the observed activity ({T1190} attempts)." },
-        { "id": "PR.AA", "name": "Identity management, authentication and access control", "tactic": "Protect", "status": "EVIDENCED", "from": "CRED", "line": "{CRED} authentication-based attempts were recorded against a single account identity." },
-        { "id": "DE.CM", "name": "Continuous monitoring", "tactic": "Detect", "status": "EVIDENCED", "from": "TOTAL24", "line": "{TOTAL24} raw events were collected and triaged continuously in the last 24 hours." },
-        { "id": "DE.AE", "name": "Adverse event analysis", "tactic": "Detect", "status": "EVIDENCED", "from": null, "line": "7 attacker addresses were correlated into a single coordinated campaign rather than 7 separate incidents." },
-        { "id": "RS.AN", "name": "Incident analysis", "tactic": "Respond", "status": "PARTIAL", "from": "NCASES", "line": "{NCASES} investigations were opened; each carries a written analysis and a recommended next step." },
-        { "id": "RC.RP", "name": "Incident recovery plan execution", "tactic": "Recover", "status": "CLEAR", "from": null, "line": "Not exercised during this window; recommend a restore test given observed lateral movement." },
-        { "id": "GV.RM", "name": "Risk management strategy", "tactic": "Govern", "status": "CLEAR", "from": null, "line": "Governance artefacts sit outside this evidence source; supply separately for a complete assessment." }
+        { "id": "ID.RA", "name": "Risk assessment", "tactic": "Identify", "from": "NTECH", "line": "{NTECH} distinct techniques observed in 24 hours provide a measured, current threat profile for the exposed estate." },
+        { "id": "PR.PS", "name": "Platform security", "tactic": "Protect", "from": "T1190", "line": "Exploitation pressure against a public-facing platform dominates the observed activity ({T1190} attempts)." },
+        { "id": "PR.AA", "name": "Identity management, authentication and access control", "tactic": "Protect", "from": "CRED", "line": "{CRED} authentication-based attempts were recorded against a single account identity." },
+        { "id": "DE.CM", "name": "Continuous monitoring", "tactic": "Detect", "from": "TOTAL24", "line": "{TOTAL24} raw events were collected and triaged continuously in the last 24 hours." },
+        { "id": "DE.AE", "name": "Adverse event analysis", "tactic": "Detect", "from": null, "line": "{IPS24} distinct attacker addresses in the last 24 hours were collapsed into {NTECH} technique categories rather than treated as separate incidents." },
+        { "id": "RS.AN", "name": "Incident analysis", "tactic": "Respond", "from": "NCASES", "line": "{NCASES} investigations were opened; each carries a written analysis and a recommended next step." },
+        { "id": "RC.RP", "name": "Incident recovery plan execution", "tactic": "Recover", "from": null, "line": "Not exercised during this window; recommend a restore test given observed lateral movement." },
+        { "id": "GV.RM", "name": "Risk management strategy", "tactic": "Govern", "from": null, "line": "Governance artefacts sit outside this evidence source; supply separately for a complete assessment." }
       ] },
     { "key": "iso", "name": "ISO/IEC 27001", "sub": "Annex A · 2022 controls",
       "scope": "This assessment references ISO/IEC 27001:2022 Annex A controls supported by 24 hours of honeypot evidence from {NODE}.",
-      "rating": "MEDIUM", "ratingWhy": "Technical controls are evidenced; organisational controls require documentation outside this source.",
       "controls": [
-        { "id": "A.8.8", "name": "Management of technical vulnerabilities", "tactic": "Technological", "status": "EVIDENCED", "from": "T1190", "line": "Sustained exploitation attempts against an exposed service demonstrate the operational need for vulnerability management ({T1190} attempts in 24 hours)." },
-        { "id": "A.8.5", "name": "Secure authentication", "tactic": "Technological", "status": "EVIDENCED", "from": "CRED", "line": "{CRED} authentication attempts against one account name evidence the requirement for strong, multi-factor authentication." },
-        { "id": "A.8.16", "name": "Monitoring activities", "tactic": "Technological", "status": "EVIDENCED", "from": "TOTAL24", "line": "Continuous monitoring captured and classified {TOTAL24} events with full evidential traceability." },
-        { "id": "A.8.20", "name": "Networks security", "tactic": "Technological", "status": "EVIDENCED", "from": "T1021.002", "line": "Lateral movement attempts across SMB support network segmentation and egress control requirements." },
-        { "id": "A.5.7", "name": "Threat intelligence", "tactic": "Organisational", "status": "EVIDENCED", "from": "NTECH", "line": "First-party threat intelligence was produced from {NTECH} observed techniques and {NCOUNTRIES} source countries." },
-        { "id": "A.5.24", "name": "Information security incident management planning and preparation", "tactic": "Organisational", "status": "PARTIAL", "from": "NCASES", "line": "{NCASES} incidents were managed end to end in the platform; the governing plan document is required to close this control." },
-        { "id": "A.8.13", "name": "Information backup", "tactic": "Technological", "status": "CLEAR", "from": null, "line": "Not observable from this evidence source; supply backup and restore test records." }
+        { "id": "A.8.8", "name": "Management of technical vulnerabilities", "tactic": "Technological", "from": "T1190", "line": "Sustained exploitation attempts against an exposed service demonstrate the operational need for vulnerability management ({T1190} attempts in 24 hours)." },
+        { "id": "A.8.5", "name": "Secure authentication", "tactic": "Technological", "from": "CRED", "line": "{CRED} authentication attempts against one account name evidence the requirement for strong, multi-factor authentication." },
+        { "id": "A.8.16", "name": "Monitoring activities", "tactic": "Technological", "from": "TOTAL24", "line": "Continuous monitoring captured and classified {TOTAL24} events with full evidential traceability." },
+        { "id": "A.8.20", "name": "Networks security", "tactic": "Technological", "from": "T1021.002", "line": "Lateral movement attempts across SMB support network segmentation and egress control requirements." },
+        { "id": "A.5.7", "name": "Threat intelligence", "tactic": "Organisational", "from": "NTECH", "line": "First-party threat intelligence was produced from {NTECH} observed techniques and {NCOUNTRIES} source countries." },
+        { "id": "A.5.24", "name": "Information security incident management planning and preparation", "tactic": "Organisational", "from": "NCASES", "line": "{NCASES} incidents were managed end to end in the platform; the governing plan document is required to close this control." },
+        { "id": "A.8.13", "name": "Information backup", "tactic": "Technological", "from": null, "line": "Not observable from this evidence source; supply backup and restore test records." }
       ] }
   ]
 } /* DATA_END */;

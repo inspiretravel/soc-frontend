@@ -53,7 +53,7 @@
     <section class="panel box">
       <h2>Tech stack</h2>
       <dl class="kv">
-        <dt>Backend</dt><dd>Python 3.11 · Flask 3.0 · SQLite</dd>
+        <dt>Backend</dt><dd>Python 3.11 · Flask 3.0 · PostgreSQL</dd>
         <dt>Threat mapping</dt><dd>MITRE ATT&amp;CK Enterprise (STIX 2.1 from MITRE's GitHub) — <span id="ntech"></span> techniques</dd>
         <dt>Frameworks</dt><dd>ACSC Essential Eight · NIST CSF 2.0 · ISO/IEC 27001:2022 Annex A</dd>
         <dt>AI</dt><dd>Anthropic Claude API, server-side only</dd>
@@ -90,7 +90,7 @@
       <ul>
         <li>The triage prose is AI-generated. It has <strong>not</strong> been reviewed by an analyst. Treat it as a demo of the workflow, not as verified intelligence.</li>
         <li>There is one honeypot node, in Melbourne. Attacks are reported by origin country, never by street address; the destination marker is region-level.</li>
-        <li>Numbers on this site come from one shared data file so pages cannot disagree; the "live" motion on the map and dashboard is illustrative until the public API is wired.</li>
+        <li>Every page reads one read-only public feed (<code>/api/public/attacks</code>) so pages cannot disagree. If the feed is unreachable the site falls back to a built-in sample and says <em>sample data</em> in the header. The feed serves stored triage only — no request to this site can trigger a model call.</li>
         <li>Every technique ID links to attack.mitre.org so you can check the mapping yourself.</li>
       </ul>
     </section>
@@ -99,13 +99,16 @@
 
 <footer id="site-footer"></footer>
 
+<script src="assets/config.js"></script>
 <script src="assets/data.js"></script>
 <script src="assets/figures.js"></script>
 <script src="assets/site.js"></script>
 <script>
-  Site.renderHeader("about.html", Site.livePill("portfolio project"));
-  Site.renderFooter();
-  Site.$("ntech").textContent = Site.fmt(window.DATA.mitreTechniqueCount);
+  Site.ready(function () {
+    Site.renderHeader("about.html", Site.sourceBadge());
+    Site.renderFooter();
+    Site.$("ntech").textContent = Site.fmt(Site.data().mitreTechniqueCount);
+  });
 </script>
 </body>
 </html>
