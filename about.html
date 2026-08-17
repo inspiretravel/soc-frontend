@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About / How it works — CyberTriageAI</title>
+<meta name="description" content="Architecture, methodology and honesty notes for CyberTriageAI — a portfolio SOC triage project built on a real Melbourne honeypot.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+  main { max-width: 1100px; margin: 0 auto; padding: 40px 26px 60px; }
+  h1 { font-family: Archivo, sans-serif; font-size: 40px; font-weight: 600; letter-spacing: -1px; margin: 0; line-height: 1.1; }
+  h2 { font-family: Archivo, sans-serif; font-size: 22px; font-weight: 600; letter-spacing: -.4px; margin: 0 0 12px; }
+  .lede { font-size: 17px; line-height: 28px; color: rgba(255,255,255,.66); max-width: 70ch; margin: 16px 0 0; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; margin-top: 32px; }
+  .box { padding: 24px 26px; }
+  .box p, .box li { font-size: 15px; line-height: 25px; color: rgba(255,255,255,.72); }
+  .box p { margin: 0 0 10px; }
+  .box ul { margin: 0; padding-left: 18px; }
+  .flow { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 10px; margin-top: 18px; }
+  .step { padding: 16px 14px; border-radius: 14px; border: 1px solid rgba(220,214,255,.12); background: rgba(220,214,255,.03); }
+  .step .k { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: #F2547D; }
+  .step .t { font-family: Archivo, sans-serif; font-size: 15px; font-weight: 600; margin-top: 6px; }
+  .step .d { font-size: 13px; line-height: 20px; color: rgba(255,255,255,.55); margin-top: 6px; }
+  .kv { display: grid; grid-template-columns: 180px minmax(0,1fr); gap: 8px 16px; font-size: 14px; }
+  .kv dt { color: rgba(255,255,255,.45); } .kv dd { margin: 0; color: rgba(255,255,255,.85); }
+  @media (max-width: 900px) { .grid { grid-template-columns: minmax(0,1fr); } .flow { grid-template-columns: repeat(2, minmax(0,1fr)); } .kv { grid-template-columns: minmax(0,1fr); } h1 { font-size: 30px; } }
+</style>
+</head>
+<body>
+
+<header id="site-header"></header>
+
+<main>
+  <span class="eyebrow" style="color:#F2547D;">About · How it works</span>
+  <h1 style="margin-top:12px;">Real attacks in. Decisions out.</h1>
+  <p class="lede">CyberTriageAI is a portfolio project built for a SOC L1 / Security Analyst job search in Australia. It runs one honeypot node in Melbourne, keeps every attempt made against it, and has an AI write each day's activity up as a prioritised, MITRE ATT&amp;CK-mapped case — the first-pass triage a junior analyst would otherwise do by hand.</p>
+
+  <section class="panel box" style="margin-top:32px;">
+    <h2>Pipeline</h2>
+    <div class="flow">
+      <div class="step"><div class="k">01 · capture</div><div class="t">Honeypot</div><div class="d">Cowrie (SSH / Telnet) and Dionaea (SMB, HTTP, FTP and more) on a single Melbourne node.</div></div>
+      <div class="step"><div class="k">02 · ship</div><div class="t">Ingest</div><div class="d">Log shippers post events to a private Flask endpoint. Every event keeps its timestamp, source IP and country.</div></div>
+      <div class="step"><div class="k">03 · map</div><div class="t">ATT&amp;CK</div><div class="d">Detection rules map each event to a technique from the full Enterprise set, loaded live from MITRE's STIX data.</div></div>
+      <div class="step"><div class="k">04 · triage</div><div class="t">AI case</div><div class="d">Grouped events go to the Claude API server-side; it returns what happened, why it matters, what to do next.</div></div>
+      <div class="step"><div class="k">05 · publish</div><div class="t">This site</div><div class="d">A static front end shows finished cases read-only. It holds no key and never calls the model.</div></div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="panel box">
+      <h2>Tech stack</h2>
+      <dl class="kv">
+        <dt>Backend</dt><dd>Python 3.11 · Flask 3.0 · SQLite</dd>
+        <dt>Threat mapping</dt><dd>MITRE ATT&amp;CK Enterprise (STIX 2.1 from MITRE's GitHub) — <span id="ntech"></span> techniques</dd>
+        <dt>Frameworks</dt><dd>ACSC Essential Eight · NIST CSF 2.0 · ISO/IEC 27001:2022 Annex A</dd>
+        <dt>AI</dt><dd>Anthropic Claude API, server-side only</dd>
+        <dt>Honeypot</dt><dd>Cowrie · Dionaea · GCP VM · systemd · nginx</dd>
+        <dt>Front end</dt><dd>Static HTML / CSS / JS · D3 (globe) · Cloudflare Pages</dd>
+        <dt>Source</dt><dd><a href="https://github.com/inspiretravel/soc-dashboard" target="_blank" rel="noopener noreferrer">github.com/inspiretravel/soc-dashboard ↗</a></dd>
+      </dl>
+    </section>
+
+    <section class="panel box">
+      <h2>About the builder</h2>
+      <p>10 years of enterprise SAP ERP incident ticketing — priority triage, SLA management, and escalation under pressure. Those workflows map directly to SOC work: same volume problem, same need to turn a queue into decisions.</p>
+      <p>I built this to demonstrate MITRE ATT&amp;CK knowledge applied to real defensive telemetry — not just reading logs, but producing an actionable, framework-mapped write-up an organisation could act on.</p>
+      <dl class="kv" style="margin-top:12px;">
+        <dt>Target role</dt><dd>SOC L1 / Security Analyst (AU)</dd>
+        <dt>Location</dt><dd>Melbourne, Australia</dd>
+      </dl>
+    </section>
+
+    <section class="panel box">
+      <h2>Key features</h2>
+      <ul>
+        <li>Full ATT&amp;CK Enterprise technique set, refreshed from MITRE's STIX feed</li>
+        <li>Detection rules with AI enrichment; every case sentence traceable to grouped raw events</li>
+        <li>Essential Eight, NIST CSF 2.0 and ISO 27001:2022 mapping from the same evidence</li>
+        <li>Case management with analyst notes (backend)</li>
+        <li>Server-side credential proxy — the public site holds no secrets</li>
+        <li>Read-only public API; all attacker-derived text rendered as escaped plain text</li>
+      </ul>
+    </section>
+
+    <section class="panel box">
+      <h2>Honesty notes</h2>
+      <ul>
+        <li>The triage prose is AI-generated. It has <strong>not</strong> been reviewed by an analyst. Treat it as a demo of the workflow, not as verified intelligence.</li>
+        <li>There is one honeypot node, in Melbourne. Attacks are reported by origin country, never by street address; the destination marker is region-level.</li>
+        <li>Numbers on this site come from one shared data file so pages cannot disagree; the "live" motion on the map and dashboard is illustrative until the public API is wired.</li>
+        <li>Every technique ID links to attack.mitre.org so you can check the mapping yourself.</li>
+      </ul>
+    </section>
+  </div>
+</main>
+
+<footer id="site-footer"></footer>
+
+<script src="assets/data.js"></script>
+<script src="assets/figures.js"></script>
+<script src="assets/site.js"></script>
+<script>
+  Site.renderHeader("about.html", Site.livePill("portfolio project"));
+  Site.renderFooter();
+  Site.$("ntech").textContent = Site.fmt(window.DATA.mitreTechniqueCount);
+</script>
+</body>
+</html>

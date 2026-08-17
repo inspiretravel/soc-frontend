@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CyberTriageAI — real attacks, triaged into decisions</title>
+<meta name="description" content="CyberTriageAI captures real internet attacks on a Melbourne honeypot and auto-triages each one into a prioritised, MITRE ATT&CK-mapped ticket. Portfolio project by a SOC analyst candidate in Australia.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+  @keyframes spinR { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes spinL { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+  @keyframes blink { 0%, 45% { opacity: 1; } 50%, 95% { opacity: 0; } 100% { opacity: 1; } }
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: none; } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+  @keyframes scaleIn { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: none; } }
+  @keyframes flyIn { from { opacity: 0; filter: blur(6px); } to { opacity: 1; filter: none; } }
+
+  .h { font-family: Archivo, sans-serif; }
+  .wrap { max-width: 1600px; margin: 0 auto; }
+  .narrow { max-width: 1280px; margin: 0 auto; }
+  .eyebrow-pink { font-size: 12px; font-weight: 600; letter-spacing: 2.4px; text-transform: uppercase; color: #F2547D; }
+  h2 { font-family: Archivo, sans-serif; font-size: 44px; font-weight: 600; letter-spacing: -1px; margin: 14px 0 0; line-height: 1.1; }
+  .cta { display: inline-flex; align-items: center; gap: 10px; border-radius: 50px; background: #F2547D; color: #150F2C; font-size: 16px; font-weight: 600; padding: 14px 26px; transition: background .3s ease; }
+  .cta:hover { background: #FF87A6; color: #150F2C; }
+  .cta-link { font-size: 16px; font-weight: 500; color: rgba(255,255,255,.78); border-bottom: 1px solid rgba(255,255,255,.22); padding-bottom: 3px; }
+  .cta-link:hover { color: #fff; border-bottom-color: #F2547D; }
+
+  /* top chrome */
+  .top { position: relative; overflow: hidden; background: radial-gradient(1200px 780px at 74% 4%, rgba(242,84,125,0.13), transparent 60%), #14102E; }
+  .grid-bg { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px); background-size: 72px 72px; mask-image: radial-gradient(1200px 800px at 50% 0%, #000, transparent 75%); -webkit-mask-image: radial-gradient(1200px 800px at 50% 0%, #000, transparent 75%); pointer-events: none; }
+  header.land { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 64px; animation: fadeDown .8s cubic-bezier(.22,1,.36,1) both; }
+  header.land .brand-mark { box-shadow: none; }
+  header.land .brand-name { font-size: 19px; }
+  nav.landnav { display: flex; align-items: center; gap: 30px; }
+  nav.landnav a { color: rgba(255,255,255,.72); font-size: 15px; white-space: nowrap; }
+  nav.landnav a:hover { color: #fff; }
+
+  /* hero */
+  .hero { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 40px; padding: 40px 64px 0; flex-wrap: wrap; }
+  .hero-copy { flex: 0 1 640px; min-width: 320px; padding-top: 32px; animation: fadeUp 1s cubic-bezier(.22,1,.36,1) both; }
+  .live-badge { display: inline-flex; align-items: center; gap: 9px; padding: 7px 14px 7px 11px; border: 1px solid rgba(242,84,125,.35); background: rgba(242,84,125,.10); border-radius: 50px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,.85); letter-spacing: .2px; }
+  .live-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #5FE3B0; box-shadow: 0 0 10px #5FE3B0; animation: pulse 2s ease-in-out infinite; }
+  h1 { font-family: Archivo, sans-serif; font-size: 64px; font-weight: 600; line-height: 64px; letter-spacing: -1.6px; margin: 22px 0 0; min-height: 200px; text-wrap: pretty; }
+  h1 .b { color: #F2547D; }
+  h1 .caret { display: inline-block; width: 3px; height: 52px; margin-left: 4px; vertical-align: -8px; background: #F2547D; animation: blink 1s steps(1) infinite; }
+  .lede { max-width: 560px; margin: 20px 0 0; font-size: 17px; line-height: 28px; color: rgba(255,255,255,.66); animation: fadeUp 1s cubic-bezier(.22,1,.36,1) 2.6s both; }
+  .lede b { color: #fff; font-weight: 600; }
+  .hero-ctas { display: flex; align-items: center; gap: 18px; margin-top: 34px; flex-wrap: wrap; animation: fadeUp .8s cubic-bezier(.22,1,.36,1) 2.8s both; }
+
+  /* orbit */
+  .orbit { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 760px; height: 760px; position: relative; animation: scaleIn 1.2s cubic-bezier(.22,1,.36,1) .3s both; }
+  .ring { position: absolute; top: 50%; left: 50%; border-radius: 50%; border: 1px solid rgba(242,84,125,.16); }
+  .ring.r1 { width: 797px; height: 797px; margin: -398.5px 0 0 -398.5px; animation: spinL 60s linear infinite; }
+  .ring.r2 { width: 649px; height: 649px; margin: -324.5px 0 0 -324.5px; border-color: rgba(242,84,125,.2); animation: spinR 50s linear infinite; }
+  .ring.r3 { width: 501px; height: 501px; margin: -250.5px 0 0 -250.5px; border-color: rgba(242,84,125,.26); animation: spinR 40s linear infinite; }
+  .ring.core { width: 353px; height: 353px; margin: -176.5px 0 0 -176.5px; border-color: rgba(242,84,125,.34); background: radial-gradient(circle at 50% 50%, rgba(242,84,125,.16), rgba(20,16,46,0) 68%); display: flex; align-items: center; justify-content: center; animation: spinL 30s linear infinite; }
+  .sat { position: absolute; top: 50%; left: 50%; }
+  .r1 .sat > div { animation: spinR 60s linear infinite; }
+  .r2 .sat > div { animation: spinL 50s linear infinite; }
+  .r3 .sat > div { animation: spinL 40s linear infinite; }
+  .core-in { display: flex; flex-direction: column; align-items: center; gap: 4px; animation: spinR 30s linear infinite; text-align: center; }
+  .core-n { font-family: Archivo, sans-serif; font-size: 56px; font-weight: 600; letter-spacing: -2px; color: #fff; line-height: 1.08; }
+  .core-l { font-family: Archivo, sans-serif; font-size: 15px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; color: rgba(242,84,125,.9); }
+  .badge { display: flex; align-items: center; gap: 9px; padding: 10px 16px; border-radius: 14px; background: rgba(28,22,64,.9); border: 1px solid rgba(242,84,125,.4); animation: flyIn .9s cubic-bezier(.22,1,.36,1) both; font-size: 13px; }
+  .badge.col { flex-direction: column; align-items: flex-start; gap: 3px; border-radius: 18px; padding: 12px 16px; background: rgba(46,24,52,.9); }
+  .badge .ip { font-family: "IBM Plex Mono", monospace; color: #FBD9E4; }
+  .badge .t { font-family: "IBM Plex Mono", monospace; font-size: 12px; }
+  .badge .n { font-weight: 500; color: #fff; }
+  .badge .pin { width: 8px; height: 8px; border-radius: 50%; background: #F2547D; }
+  .badge a.mitre { color: inherit; }
+
+  /* map */
+  #map { position: relative; margin-top: 40px; padding: 0 64px 88px; }
+  .map-frame { position: relative; border-radius: 26px; overflow: hidden; border: 1px solid rgba(220,214,255,.13); background: #14102E; box-shadow: 0 40px 100px rgba(0,0,0,.55); }
+  .map-frame iframe { display: block; width: 100%; height: 780px; border: 0; }
+
+  section.band { padding: 96px 64px; border-top: 1px solid rgba(255,255,255,.07); }
+  #how { background: linear-gradient(180deg, #14102E, #1C1640); }
+  #numbers { background: #14102E; }
+  #inside { background: #1C1640; }
+  #about-teaser { background: #14102E; }
+  .cols4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin-top: 56px; }
+  .card { padding: 32px 28px 34px; border-radius: 24px; border: 1px solid rgba(220,214,255,.10); background: rgba(220,214,255,.035); transition: transform .4s cubic-bezier(.22,1,.36,1), border-color .4s; }
+  .card:hover { transform: translateY(-6px); border-color: rgba(242,84,125,.5); }
+  .card .num { width: 42px; height: 42px; border-radius: 12px; background: rgba(242,84,125,.16); border: 1px solid rgba(242,84,125,.4); display: flex; align-items: center; justify-content: center; font-family: Archivo, sans-serif; font-weight: 700; color: #FF87A6; }
+  .card h3 { font-family: Archivo, sans-serif; font-size: 22px; font-weight: 600; margin: 22px 0 0; letter-spacing: -.4px; }
+  .card p { margin: 10px 0 0; font-size: 15px; line-height: 24px; color: rgba(255,255,255,.6); }
+  .stat { padding: 30px 28px; border-radius: 22px; border: 1px solid rgba(220,214,255,.10); background: linear-gradient(160deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); }
+  .stat.hot { background: linear-gradient(160deg, rgba(242,84,125,.12), rgba(255,255,255,.02)); }
+  .stat .v { font-family: Archivo, sans-serif; font-size: 52px; font-weight: 600; letter-spacing: -1.5px; color: #fff; line-height: 1.08; }
+  .stat .v.pink { color: #F2547D; }
+  .stat .l { margin-top: 12px; font-size: 15px; line-height: 22px; color: rgba(255,255,255,.6); }
+
+  /* inside the tool */
+  .split2 { display: grid; grid-template-columns: 340px minmax(0,1fr); gap: 44px; margin-top: 52px; align-items: start; }
+  .tabs { display: flex; flex-direction: column; gap: 6px; }
+  .tabbtn { display: block; width: 100%; text-align: left; cursor: pointer; font-family: inherit; padding: 18px 20px; border-radius: 16px; transition: background .35s cubic-bezier(.22,1,.36,1), border-color .35s; border: 1px solid transparent; background: transparent; color: #fff; }
+  .tabbtn[aria-selected="true"] { border-color: rgba(242,84,125,.5); background: rgba(242,84,125,.12); }
+  .tabbtn .tt { display: flex; align-items: center; gap: 10px; }
+  .tabbtn .tn { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: #F2547D; }
+  .tabbtn .ti { font-family: Archivo, sans-serif; font-size: 19px; font-weight: 600; letter-spacing: -.3px; }
+  .tabbtn .td { display: block; margin-top: 7px; font-size: 14px; line-height: 22px; color: rgba(255,255,255,.58); }
+  .shot-glow { position: absolute; inset: 14% 6% -6% 6%; background: radial-gradient(closest-side, rgba(242,84,125,.4), transparent); filter: blur(50px); pointer-events: none; }
+  .shot { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); background: #1C1640; box-shadow: 0 40px 90px rgba(0,0,0,.6); }
+  .shot-bar { display: flex; align-items: center; gap: 14px; padding: 12px 16px; background: rgba(255,255,255,.04); border-bottom: 1px solid rgba(255,255,255,.08); }
+  .shot-bar .lights { display: flex; gap: 7px; }
+  .shot-bar .lights span { width: 11px; height: 11px; border-radius: 50%; }
+  .shot-url { flex: 1; text-align: center; font-family: "IBM Plex Mono", monospace; font-size: 12px; color: rgba(255,255,255,.45); background: rgba(0,0,0,.35); border-radius: 7px; padding: 5px 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .expand { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(242,84,125,.4); background: rgba(242,84,125,.14); color: #FBD9E4; border-radius: 8px; padding: 3px 9px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .shot-slot { position: relative; min-height: 420px; background: #1C1640; }
+  .shot-slot iframe { display: block; width: 100%; height: 720px; border: 0; background: #1C1640; }
+  .caption { margin: 18px 2px 0; font-size: 15px; line-height: 24px; color: rgba(255,255,255,.55); }
+
+  /* zoom overlay */
+  #zoom { position: fixed; inset: 0; z-index: 90; background: rgba(16,12,36,.94); display: flex; flex-direction: column; padding: 28px 32px 32px; transition: opacity .35s cubic-bezier(.22,1,.36,1); opacity: 0; visibility: hidden; pointer-events: none; }
+  #zoom[data-open] { opacity: 1; visibility: visible; pointer-events: auto; }
+  #zoom .zslot { flex: 1; min-height: 0; border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); background: #1C1640; }
+  #zoom .zslot iframe { display: block; width: 100%; height: 100%; border: 0; }
+  .close { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 500; color: #fff; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.18); border-radius: 50px; padding: 10px 18px; transition: background .3s, border-color .3s; }
+  .close:hover { background: rgba(242,84,125,.2); border-color: rgba(242,84,125,.6); }
+
+  /* about teaser */
+  .about-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 44px; }
+  .about-grid ul { margin: 12px 0 0; padding-left: 18px; font-size: 15px; line-height: 26px; color: rgba(255,255,255,.7); }
+  .about-grid h3 { font-family: Archivo, sans-serif; font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -.3px; }
+
+  #assess { position: relative; overflow: hidden; background: radial-gradient(700px 420px at 50% 0%, rgba(242,84,125,.28), transparent 68%), #14102E; padding: 110px 64px 96px; border-top: 1px solid rgba(255,255,255,.07); text-align: center; }
+  #assess h2 { font-size: 52px; letter-spacing: -1.4px; margin: 0; line-height: 1.08; }
+  [data-reveal] { opacity: 0; transform: translateY(28px); transition: opacity .9s cubic-bezier(.22,1,.36,1), transform .9s cubic-bezier(.22,1,.36,1); }
+  [data-reveal].on { opacity: 1; transform: none; }
+
+  @media (max-width: 1600px) { .orbit { width: 640px; height: 640px; transform: scale(.78); } .hero { padding-left: 40px; padding-right: 40px; } }
+  @media (max-width: 1200px) { .orbit { width: 520px; height: 520px; transform: scale(.62); } .cols4 { grid-template-columns: repeat(2, 1fr); } .split2 { grid-template-columns: minmax(0,1fr); gap: 32px; } .about-grid { grid-template-columns: minmax(0,1fr); } }
+  @media (max-width: 1150px) { nav.landnav { display: none; } }
+  @media (max-width: 900px) {
+    .orbit { width: 380px; height: 400px; transform: scale(.46); }
+    header.land { padding: 18px 24px; } section.band, #map, #assess { padding-left: 24px; padding-right: 24px; } .hero { padding-left: 24px; padding-right: 24px; }
+    h1 { font-size: 38px; line-height: 44px; min-height: 132px; letter-spacing: -.8px; } h1 .caret { height: 34px; vertical-align: -5px; }
+    h2 { font-size: 32px; letter-spacing: -.6px; } #assess h2 { font-size: 36px; }
+    .map-frame iframe { height: 1400px; }
+  }
+  @media (max-width: 600px) { .orbit { width: 290px; height: 320px; transform: scale(.34); } .cols4 { grid-template-columns: minmax(0,1fr); } h1 { font-size: 30px; line-height: 36px; min-height: 118px; } .shot-slot iframe { height: 900px; } }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="grid-bg" aria-hidden="true"></div>
+
+  <header class="land wrap">
+    <div style="display:flex;align-items:center;gap:44px;">
+      <div id="brand"></div>
+      <nav class="landnav" aria-label="Primary">
+        <a href="#map">Live attack map</a>
+        <a href="#how">How it works</a>
+        <a href="#numbers">Statistics</a>
+        <a href="#inside">Inside the tool</a>
+        <a href="about.html">About</a>
+      </nav>
+    </div>
+    <a class="cta-link" href="dashboard.html" style="font-size:14px;">Open the dashboard →</a>
+  </header>
+
+  <section class="hero wrap" aria-labelledby="h1">
+    <div class="hero-copy">
+      <div class="live-badge"><span class="dot"></span>Live honeypot · Melbourne, Australia · recording right now</div>
+      <h1 id="h1"><span id="typedA"></span><span class="b" id="typedB"></span><span class="caret" aria-hidden="true"></span></h1>
+      <p class="lede"><b>The problem:</b> SOC teams drown in alert volume, and junior analysts burn hours on repetitive first-pass triage of attacks that all look the same. <b>What this does:</b> CyberTriageAI captures real internet attacks on a single honeypot node in Melbourne and auto-triages each one into a structured, prioritised, MITRE ATT&amp;CK-mapped ticket — so the analyst starts from a decision, not a raw log line.</p>
+      <div class="hero-ctas">
+        <a class="cta" href="dashboard.html">View the live threat feed
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h13M12.5 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <a class="cta-link" href="cases.html">See a real case →</a>
+        <a class="cta-link" href="https://github.com/inspiretravel/soc-dashboard" target="_blank" rel="noopener noreferrer">View source on GitHub ↗</a>
+      </div>
+    </div>
+
+    <div class="orbit" aria-hidden="true">
+      <div class="ring r1">
+        <div class="sat" style="transform:translate(-50%,-50%) rotate(30deg) translate(398px) rotate(-30deg);"><div><div class="badge" style="animation-delay:.6s;"><span class="pin"></span><span class="ip">20.65.224.144</span></div></div></div>
+        <div class="sat" style="transform:translate(-50%,-50%) rotate(95deg) translate(398px) rotate(-95deg);"><div><div class="badge col" style="animation-delay:1s;"><span class="t" style="color:#FFA85C;">T1110</span><span class="n">Brute force</span></div></div></div>
+        <div class="sat" style="transform:translate(-50%,-50%) rotate(220deg) translate(398px) rotate(-220deg);"><div><div class="badge col" style="animation-delay:1.4s;background:rgba(44,20,48,.9);border-color:rgba(196,23,63,.4);"><span class="t" style="color:#FF6F8F;">T1021.002</span><span class="n">SMB admin shares</span></div></div></div>
+        <div class="sat" style="transform:translate(-50%,-50%) rotate(320deg) translate(398px) rotate(-320deg);"><div><div class="badge" style="animation-delay:1.8s;"><span class="pin" style="background:#6BC7F2;"></span><span class="ip">34.78.74.222</span></div></div></div>
+      </div>
+      <div class="ring r2">
+        <div class="sat" style="transform:translate(-50%,-50%) rotate(130deg) translate(324px) rotate(-130deg);"><div><div class="badge col" style="animation-delay:1.2s;background:rgba(44,20,48,.9);border-color:rgba(196,23,63,.42);"><span class="t" style="color:#FF6F8F;">T1190 · critical</span><span class="n">Exploit public-facing app</span></div></div></div>
+        <div class="sat" style="transform:translate(-50%,-50%) rotate(330deg) translate(324px) rotate(-330deg);"><div><div class="badge" style="animation-delay:2s;background:rgba(24,28,66,.9);border-color:rgba(107,199,242,.38);"><span class="n" style="color:#D8E9F5;">Lateral movement</span></div></div></div>
+      </div>
+      <div class="ring r3">
+        <div class="sat" style="transform:translate(-50%,-50%) rotate(60deg) translate(250px) rotate(-60deg);"><div><div class="badge" style="animation-delay:.8s;background:rgba(46,24,52,.92);"><span class="t" style="color:#FFA85C;font-size:13px;">576×</span><span style="color:rgba(255,255,255,.8);">in 4h</span></div></div></div>
+        <div class="sat" style="transform:translate(-50%,-50%) rotate(180deg) translate(250px) rotate(-180deg);"><div><div class="badge" style="animation-delay:1.6s;"><span class="n" style="color:#FBD9E4;">Initial access</span></div></div></div>
+        <div class="sat" style="transform:translate(-50%,-50%) rotate(300deg) translate(250px) rotate(-300deg);"><div><div class="badge" style="animation-delay:2.3s;background:rgba(48,18,40,.92);border-color:rgba(196,23,63,.42);"><span class="pin" style="background:#C4173F;box-shadow:0 0 10px #C4173F;"></span><span class="n" style="color:#FFD9E0;">Critical finding</span></div></div></div>
+      </div>
+      <div class="ring core">
+        <div class="core-in"><span class="core-n" id="attacksLabel">0</span><span class="core-l">Attacks recorded</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="map">
+    <div class="wrap">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:22px;">
+        <div>
+          <span class="eyebrow-pink">Live attack map</span>
+          <h2 style="font-size:40px;margin-top:12px;">This is happening to Australia right now.</h2>
+        </div>
+        <p style="max-width:420px;margin:0;font-size:15px;line-height:24px;color:rgba(255,255,255,.55);">Every arc is a real attack pattern reaching our honeypot in Melbourne. Drag the globe to look around — reported by country, never by address.</p>
+      </div>
+      <div class="map-frame">
+        <iframe data-frame="1" src="attack-map.html" title="Live attack map" loading="lazy"></iframe>
+      </div>
+    </div>
+  </section>
+</div>
+
+<section id="how" class="band">
+  <div class="narrow" data-reveal>
+    <span class="eyebrow-pink">How it works</span>
+    <h2 style="max-width:660px;">Bait, record, explain. That's the whole idea.</h2>
+    <div class="cols4">
+      <div class="card"><div class="num">01</div><h3>We put out bait</h3><p>A real, deliberately exposed machine sits on the open internet doing nothing. Attackers find it within minutes.</p></div>
+      <div class="card"><div class="num">02</div><h3>Everything gets kept</h3><p>Every probe, password guess and exploit attempt is timestamped, geolocated and stored — the whole attempt, not a summary.</p></div>
+      <div class="card"><div class="num">03</div><h3>The AI does the triage</h3><p id="howTriage"></p></div>
+      <div class="card"><div class="num">04</div><h3>You get the story</h3><p>What happened, why it matters, and what to do next — three short paragraphs, no jargon tax, every claim traceable to the events behind it.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="numbers" class="band">
+  <div class="narrow" data-reveal>
+    <span class="eyebrow-pink">Statistics</span>
+    <h2 style="max-width:620px;">One machine, one month, and a very busy internet.</h2>
+    <p style="margin:16px 0 0;font-size:17px;line-height:27px;color:rgba(255,255,255,.6);max-width:620px;">Nobody has ever heard of this server. It has no users, no data, no reason to exist. Here is what still happened to it.</p>
+    <div class="cols4" style="margin-top:52px;gap:20px;">
+      <div class="stat hot"><div class="v" id="stat1">0</div><div class="l">attacks recorded against a single honeypot, all time</div></div>
+      <div class="stat"><div class="v pink" id="stat2">0</div><div class="l">MITRE ATT&amp;CK Enterprise techniques we can name on sight</div></div>
+      <div class="stat"><div class="v" id="stat3">0</div><div class="l" id="stat3l"></div></div>
+      <div class="stat"><div class="v" id="stat4">0</div><div class="l">AI-written cases in the last 7 days, each traceable to its raw events</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="inside" class="band">
+  <div class="narrow" data-reveal>
+    <span class="eyebrow-pink">Inside the tool</span>
+    <h2 style="max-width:660px;">Four screens. No dashboard archaeology.</h2>
+    <div class="split2">
+      <div class="tabs" id="tabs" role="tablist" aria-label="Screens"></div>
+      <div style="position:relative;">
+        <div class="shot-glow" aria-hidden="true"></div>
+        <div class="shot">
+          <div class="shot-bar">
+            <span class="lights" aria-hidden="true"><span style="background:#FF5F57;"></span><span style="background:#FEBC2E;"></span><span style="background:#28C840;"></span></span>
+            <span class="shot-url" id="shotUrl"></span>
+            <span style="display:flex;align-items:center;gap:12px;font-size:12px;color:rgba(255,255,255,.5);white-space:nowrap;">
+              <span class="pill" style="font-size:12px;"><span class="dot" style="background:#5FE3B0;box-shadow:0 0 8px #5FE3B0;"></span>demo</span>
+              <button class="expand" id="openZoom" type="button" aria-haspopup="dialog"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 9V4h5M20 15v5h-5M20 9V4h-5M4 15v5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>expand</button>
+            </span>
+          </div>
+          <div class="shot-slot" id="slotMain" role="tabpanel"></div>
+        </div>
+        <p class="caption" id="shotCaption"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="about-teaser" class="band">
+  <div class="narrow" data-reveal>
+    <span class="eyebrow-pink">About the builder</span>
+    <h2 style="max-width:720px;">Ten years of enterprise ticket triage, pointed at security.</h2>
+    <p style="margin:16px 0 0;font-size:17px;line-height:27px;color:rgba(255,255,255,.6);max-width:680px;">10 years of SAP ERP incident ticketing — priority triage, SLA management, escalation under pressure. Those workflows map directly to SOC work. This project demonstrates MITRE ATT&amp;CK knowledge applied to real defensive telemetry, not just reading logs.</p>
+    <div class="about-grid">
+      <div class="card"><h3>What it does</h3><ul><li>Real honeypot telemetry (Cowrie SSH/Telnet, Dionaea multi-protocol)</li><li>MITRE ATT&amp;CK mapping — the full Enterprise technique set</li><li>ACSC Essential Eight, NIST CSF 2.0 and ISO/IEC 27001:2022 linkage</li><li>Priority queue, written cases, framework-mapped assessment</li></ul></div>
+      <div class="card"><h3>Tech stack</h3><ul><li>Python 3.11 · Flask 3.0 · SQLite</li><li>MITRE ATT&amp;CK STIX (live from MITRE's GitHub)</li><li>Claude API for triage prose — server-side only, keys never in the browser</li><li>This front end: static HTML/CSS/JS on Cloudflare Pages · D3 globe</li></ul></div>
+      <div class="card"><h3>Key features</h3><ul><li>Every case sentence traceable to grouped raw events</li><li>Case management with analyst notes (backend)</li><li>Server-side credential proxy — the public site holds no secrets</li><li>Read-only public API; attacker-derived text always escaped</li></ul></div>
+    </div>
+    <p style="margin:28px 0 0;"><a class="cta-link" href="about.html">Read the full methodology →</a></p>
+  </div>
+</section>
+
+<section id="assess">
+  <div style="max-width:760px;margin:0 auto;" data-reveal>
+    <h2>See what a triaged attack looks like.</h2>
+    <p style="margin:18px auto 0;max-width:560px;font-size:17px;line-height:27px;color:rgba(255,255,255,.62);">Open the case list and read what the honeypot took today: what happened, why it matters, and what an analyst would do next — mapped to ATT&amp;CK and to the frameworks you report against.</p>
+    <div style="display:flex;justify-content:center;align-items:center;gap:18px;margin-top:36px;flex-wrap:wrap;">
+      <a class="cta" href="cases.html">Read today's case
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h13M12.5 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <a class="cta-link" href="reference.html">Framework mapping →</a>
+    </div>
+  </div>
+</section>
+
+<div id="zoom" role="dialog" aria-modal="true" aria-labelledby="zoomTitle">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:18px;">
+    <div>
+      <div class="eyebrow-pink" style="letter-spacing:2.2px;">Inside the tool</div>
+      <div class="h" id="zoomTitle" style="font-size:24px;font-weight:600;margin-top:6px;"></div>
+    </div>
+    <button class="close" id="closeZoom" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Close</button>
+  </div>
+  <div class="zslot" id="slotZoom"></div>
+  <p style="margin:14px 0 0;font-size:13px;color:rgba(255,255,255,.45);text-align:center;">Press Esc or Close to return to the preview.</p>
+</div>
+
+<footer id="site-footer"></footer>
+
+<script src="assets/data.js"></script>
+<script src="assets/figures.js"></script>
+<script src="assets/site.js"></script>
+<script>
+(function () {
+  var S = window.Site, el = S.el, fmt = S.fmt, ST = S.STATS, D = window.DATA, RM = S.RM;
+  S.renderFooter();
+  S.replace(S.$("brand"), S.logo(30));   // same logo builder as the subpages
+
+  /* ---- hero: pain → solution headline, typed ---- */
+  var A = "Too many alerts. Not enough analysts. ", B = "Every attack here arrives already triaged.";
+  var typedA = S.$("typedA"), typedB = S.$("typedB");
+  if (RM) { typedA.textContent = A; typedB.textContent = B; }
+  else {
+    var n = 0, full = A + B;
+    setTimeout(function () {
+      var t = setInterval(function () {
+        n++; typedA.textContent = full.slice(0, Math.min(n, A.length)); typedB.textContent = n > A.length ? full.slice(A.length, n) : "";
+        if (n >= full.length) clearInterval(t);
+      }, 35);
+    }, 400);
+  }
+
+  function countTo(node, target, dur) {
+    if (!S.isFilled(target)) { node.textContent = S.fig(target); node.classList.add("ps-fill"); return; }
+    if (RM) { node.textContent = fmt(target); return; }
+    var start = performance.now();
+    (function step(now) {
+      var t = Math.min(1, (now - start) / dur), eased = 1 - Math.pow(1 - t, 3);
+      node.textContent = fmt(Math.round(target * eased));
+      if (t < 1) requestAnimationFrame(step);
+    })(start);
+  }
+  setTimeout(function () { countTo(S.$("attacksLabel"), ST.allTime, 2200); }, RM ? 200 : 1200);
+
+  /* ---- copy that carries numbers is derived from DATA ---- */
+  S.$("howTriage").textContent = fmt(ST.total24) + " near-identical events in the last 24 hours become " + ST.categories + " ranked attack categories, each tagged with the ATT&CK technique behind it and a severity you can defend.";
+  S.$("stat3l").textContent = "raw events in the last 24 hours, folded into " + ST.categories + " ranked attack categories";
+
+  /* ---- statistics counters ---- */
+  var statsEl = S.$("numbers");
+  var sio = new IntersectionObserver(function (entries) {
+    if (entries.some(function (e) { return e.isIntersecting; })) {
+      sio.disconnect();
+      countTo(S.$("stat1"), ST.allTime, 1600);
+      countTo(S.$("stat2"), D.mitreTechniqueCount, 1400);
+      countTo(S.$("stat3"), ST.total24, 1500);
+      countTo(S.$("stat4"), ST.cases.length, 1200);
+    }
+  }, { threshold: 0.2 });
+  sio.observe(statsEl);
+
+  /* ---- reveal on scroll ---- */
+  var targets = document.querySelectorAll("[data-reveal]");
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("on"); io.unobserve(e.target); } });
+  }, { threshold: 0.15 });
+  targets.forEach(function (t) { io.observe(t); });
+  setTimeout(function () { targets.forEach(function (t) { t.classList.add("on"); }); }, 4000);
+
+  /* ---- iframe height messages from subpages ---- */
+  window.addEventListener("message", function (e) {
+    if (!e.data || ["mapHeight", "dashHeight", "casesHeight", "refHeight"].indexOf(e.data.type) < 0) return;
+    if (typeof e.data.height !== "number") return;
+    var h = Math.max(420, Math.min(2800, e.data.height));
+    document.querySelectorAll("iframe").forEach(function (f) {
+      if (f.contentWindow === e.source && !f.hasAttribute("data-noresize")) f.style.height = h + "px";
+    });
+  });
+
+  /* ---- Inside the tool: tabs + zoom ---- */
+  var SHOTS = [
+    { num: "01", title: "Priority queue", desc: "Grouped by attacker technique, ranked by what would actually hurt.", live: "dashboard.html",
+      caption: fmt(ST.total24) + " raw events from the last 24 hours, collapsed into " + ST.categories + " ranked rows. The loudest category is rarely the dangerous one." },
+    { num: "02", title: "Live attack map", desc: "Where it came from, where it landed, how often.", live: "attack-map.html",
+      caption: "Attacks traced to origin country, with per-country and per-technique breakdowns. One destination: the Melbourne node." },
+    { num: "03", title: "Cases, written out", desc: "What's happening · why it matters · what to do next.", live: "cases.html",
+      caption: "Three short paragraphs a non-specialist can read — every claim links back to the raw events behind it. " + ST.cases.length + " cases in the last 7 days." },
+    { num: "04", title: "Framework mapping", desc: "ATT&CK, Essential Eight, NIST CSF, ISO 27001 — pick one, the assessment fills itself.", live: "reference.html",
+      caption: "Same evidence, four reporting languages. Choose the scheme you answer to and the threat assessment is written from the findings you already have." }
+  ];
+  var tab = 0, zoomOpen = false, mounted = { main: -1, zoom: -1 };
+  function frame(i, zoom) {
+    return el("iframe", { src: SHOTS[i].live, title: SHOTS[i].title, loading: "lazy", "data-noresize": zoom ? "" : null });
+  }
+  function sync() {
+    var s = SHOTS[tab];
+    if (mounted.main !== tab) { mounted.main = tab; S.replace(S.$("slotMain"), frame(tab, false)); }
+    S.$("shotUrl").textContent = "cybertriageai · " + s.live;
+    S.$("shotCaption").textContent = s.caption;
+    S.$("zoomTitle").textContent = s.title;
+    var z = S.$("zoom");
+    if (zoomOpen) {
+      z.setAttribute("data-open", ""); if (mounted.zoom !== tab) { mounted.zoom = tab; S.replace(S.$("slotZoom"), frame(tab, true)); }
+      S.$("closeZoom").focus();
+    } else { z.removeAttribute("data-open"); if (mounted.zoom !== -1) { mounted.zoom = -1; S.clear(S.$("slotZoom")); } }
+    document.querySelectorAll(".tabbtn").forEach(function (b, i) { b.setAttribute("aria-selected", i === tab ? "true" : "false"); b.tabIndex = i === tab ? 0 : -1; });
+  }
+  S.replace(S.$("tabs"), SHOTS.map(function (s, i) {
+    return el("button", { className: "tabbtn", type: "button", role: "tab", "aria-selected": "false", "aria-controls": "slotMain",
+      onclick: function () { tab = i; sync(); },
+      onkeydown: function (e) {
+        if (e.key === "ArrowDown" || e.key === "ArrowRight") { tab = (tab + 1) % SHOTS.length; sync(); document.querySelectorAll(".tabbtn")[tab].focus(); e.preventDefault(); }
+        if (e.key === "ArrowUp" || e.key === "ArrowLeft") { tab = (tab + SHOTS.length - 1) % SHOTS.length; sync(); document.querySelectorAll(".tabbtn")[tab].focus(); e.preventDefault(); }
+      } },
+      el("span", { className: "tt" }, el("span", { className: "tn" }, s.num), el("span", { className: "ti" }, s.title)),
+      el("span", { className: "td" }, s.desc));
+  }));
+  S.$("openZoom").addEventListener("click", function () { zoomOpen = true; sync(); });
+  S.$("closeZoom").addEventListener("click", function () { zoomOpen = false; sync(); S.$("openZoom").focus(); });
+  window.addEventListener("keydown", function (e) { if (e.key === "Escape" && zoomOpen) { zoomOpen = false; sync(); S.$("openZoom").focus(); } });
+  sync();
+})();
+</script>
+</body>
+</html>

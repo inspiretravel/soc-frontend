@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Attack Map — CyberTriageAI</title>
+<meta name="description" content="Attacks reaching a single honeypot node in Melbourne, Australia, traced to their country of origin.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+<script src="https://unpkg.com/d3@7.9.0/dist/d3.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js" integrity="sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67" crossorigin="anonymous"></script>
+<style>
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+  #shell { display: grid; grid-template-columns: 300px minmax(0,1fr) 320px; gap: 16px; padding: 16px; height: calc(100vh - 61px); }
+  #stage { position: relative; flex: 1; min-height: 0; }
+  canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  #legend span { white-space: nowrap; }
+  .bucket { flex: 1; border: 0; padding: 0; border-radius: 4px 4px 2px 2px; cursor: pointer; transition: background .3s, height .5s cubic-bezier(.22,1,.36,1); }
+  #mapFallback { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; padding: 24px; text-align: center; font-size: 14px; color: rgba(255,255,255,.6); }
+  html[data-embedded] #shell { height: auto; }
+  html[data-embedded] #stage { min-height: 560px; }
+  @media (max-width: 1200px) {
+    #shell { grid-template-columns: minmax(0,1fr); height: auto; }
+    body { overflow-y: auto; }
+    #left { max-height: none; height: auto; }
+    #stage { min-height: 480px; }
+  }
+  @media (max-width: 700px) { #stage { min-height: 360px; } }
+</style>
+</head>
+<body>
+
+<header id="site-header"></header>
+
+<div id="shell">
+
+  <aside id="left" class="panel" style="display:flex;flex-direction:column;overflow:auto;">
+    <div style="padding:16px 16px 12px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:9px;flex-wrap:wrap;">
+      <span class="dot" style="width:7px;height:7px;border-radius:50%;background:#C4173F;box-shadow:0 0 9px #C4173F;animation:pulse 1.6s ease-in-out infinite;"></span>
+      <span class="eyebrow">Incoming attacks</span>
+      <span id="feedTag"></span>
+    </div>
+
+    <div style="padding:16px;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(242,84,125,.07);">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:rgba(255,255,255,.6);white-space:nowrap;">current 5-minute window</span>
+        <span id="windowClock" class="mono" style="font-size:11px;color:rgba(255,255,255,.45);">--:--</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-top:8px;">
+        <span id="livecount" class="mono" style="font-size:30px;color:#fff;letter-spacing:-1px;">0</span>
+        <span style="font-size:12px;color:rgba(255,255,255,.5);white-space:nowrap;">attempts so far</span>
+      </div>
+      <div class="bar" style="margin-top:10px;"><i id="windowProgress" style="width:0%;background:linear-gradient(90deg,#F2547D,#C4173F);transition:width .4s linear;"></i></div>
+    </div>
+
+    <div style="padding:16px 16px 6px;">
+      <div class="eyebrow">Last hour · per 5 min</div>
+      <div id="buckets" style="display:flex;align-items:flex-end;gap:4px;height:86px;margin-top:14px;" role="group" aria-label="Attempts per five-minute window"></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.35);margin-top:7px;" class="mono"><span style="white-space:nowrap;">-60 min</span><span>now</span></div>
+    </div>
+
+    <div id="detail" style="flex:1;padding:16px;border-top:1px solid rgba(255,255,255,.07);margin-top:10px;" aria-live="polite"></div>
+  </aside>
+
+  <main class="panel" style="display:flex;flex-direction:column;overflow:hidden;position:relative;">
+    <div style="padding:18px 24px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;">
+      <div>
+        <h1 style="font-family:Archivo,sans-serif;font-size:24px;font-weight:600;letter-spacing:-.4px;margin:0;">Live cyber threat map</h1>
+        <p style="margin:6px 0 0;font-size:14px;color:rgba(255,255,255,.55);">Attacks reaching a single honeypot node in Melbourne, Australia, as they land. Drag the globe to look around.</p>
+      </div>
+      <div style="display:flex;gap:28px;">
+        <div>
+          <div class="eyebrow">Total detected · all time</div>
+          <div id="total" class="mono" style="font-size:26px;color:#C4173F;letter-spacing:-.5px;margin-top:4px;"></div>
+        </div>
+        <div>
+          <div class="eyebrow">Target</div>
+          <div style="font-family:Archivo,sans-serif;font-size:20px;font-weight:600;margin-top:6px;color:#FF87A6;">Melbourne, AU</div>
+        </div>
+      </div>
+    </div>
+    <div id="stage">
+      <canvas id="globe" role="img" aria-label="Rotating globe showing attack arcs from origin countries to the Melbourne honeypot"></canvas>
+      <div id="mapFallback">The interactive globe needs the D3 library, which did not load. The origin and technique panels on this page still show the same data.</div>
+      <div id="legend" style="position:absolute;left:24px;bottom:20px;display:flex;flex-wrap:wrap;gap:18px;font-size:12px;color:rgba(255,255,255,.5);">
+        <span style="display:flex;align-items:center;gap:7px;"><i style="width:9px;height:9px;border-radius:50%;background:#C4173F;display:inline-block;"></i>attack origin</span>
+        <span style="display:flex;align-items:center;gap:7px;"><i style="width:9px;height:9px;border-radius:50%;background:#FF87A6;display:inline-block;"></i>honeypot node · Melbourne, AU</span>
+        <span style="display:flex;align-items:center;gap:7px;"><i style="width:16px;height:2px;background:linear-gradient(90deg,#F2547D,#C4173F);display:inline-block;"></i>live session</span>
+      </div>
+    </div>
+  </main>
+
+  <aside id="right" style="display:flex;flex-direction:column;gap:16px;">
+    <section class="panel" style="padding:18px 18px 20px;">
+      <div class="eyebrow">Highest rate of attack origins</div>
+      <div id="origins" style="margin-top:14px;display:flex;flex-direction:column;gap:14px;"></div>
+    </section>
+    <section class="panel" style="padding:18px 18px 20px;">
+      <div class="eyebrow">What they're trying</div>
+      <div id="techs" style="margin-top:14px;display:flex;flex-direction:column;gap:14px;"></div>
+    </section>
+    <section class="panel" style="padding:18px;">
+      <div class="eyebrow">Coverage</div>
+      <p style="margin:10px 0 0;font-size:14px;line-height:22px;color:rgba(255,255,255,.6);">One honeypot node, hosted in Melbourne, Australia. We report by country, never by street address — the map shows the nation under attack, not a building.</p>
+    </section>
+  </aside>
+</div>
+
+<footer id="site-footer"></footer>
+
+<script src="assets/data.js"></script>
+<script src="assets/figures.js"></script>
+<script src="assets/site.js"></script>
+<script>
+(function () {
+  var S = window.Site, el = S.el, fmt = S.fmt, D = window.DATA, ST = S.STATS, RM = S.RM;
+  var shell = document.getElementById("shell");
+  S.embed("mapHeight", shell);
+  S.renderHeader("attack-map.html", S.livePill("demo data · " + fmt(D.mitreTechniqueCount) + " ATT&CK techniques"));
+  S.renderFooter();
+
+  S.$("total").textContent = S.fig(ST.allTime);
+  S.replace(S.$("feedTag"), S.demoTag("simulated feed"));
+
+  // T1.3: one destination only — the single Melbourne node (region-level coordinate).
+  var TARGET = { name: D.nodeShort, coord: D.nodeCoord };
+  var ORIGINS = D.origins;
+  // Technique share on the map = the top four queue categories, weighted by their real 24h counts.
+  var TECHS = ST.queue.slice(0, 4).map(function (q) { return { id: q.id, name: q.name, color: S.SEV[q.sev], w: Math.round(q.n / ST.total24 * 100) }; });
+  var SEV = [{ label: "CRITICAL", color: S.SEV.CRITICAL }, { label: "HIGH", color: S.SEV.HIGH }, { label: "MEDIUM", color: S.SEV.MEDIUM }];
+
+  /* right-hand panels */
+  S.replace(S.$("origins"), ORIGINS.slice(0, 6).map(function (o) {
+    return el("div", null,
+      el("div", { style: "display:flex;justify-content:space-between;font-size:13px;" },
+        el("span", { style: "display:flex;align-items:center;gap:9px;" },
+          el("span", { className: "mono", style: "font-size:11px;color:#F2547D;border:1px solid rgba(242,84,125,.35);border-radius:5px;padding:1px 5px;" }, o.cc), o.name),
+        el("span", { className: "mono", style: "color:rgba(255,255,255,.55);" }, o.w + "%")),
+      el("div", { className: "bar", style: "margin-top:7px;" }, el("i", { style: "width:" + o.w * 3 + "%;background:linear-gradient(90deg,#F2547D,#C4173F);" })));
+  }));
+  S.replace(S.$("techs"), TECHS.map(function (t) {
+    return el("div", null,
+      el("div", { style: "display:flex;justify-content:space-between;font-size:13px;" },
+        el("span", null, S.mitreLink(t.id, "font-size:11px;color:" + t.color + ";"), " " + t.name),
+        el("span", { className: "mono", style: "color:rgba(255,255,255,.55);" }, t.w + "%")),
+      el("div", { className: "bar", style: "margin-top:7px;" }, el("i", { style: "width:" + Math.max(2, t.w) + "%;background:" + t.color + ";" })));
+  }));
+
+  /* ---- simulated feed (demo only; replaced by /api/public/attacks in Deploy B) ---- */
+  var WINDOW_MS = 9000, clock = new Date(), buckets = [], bucket = null, selected = -1, windowStart = performance.now();
+  function pick(list) { var t = list.reduce(function (s, o) { return s + o.w; }, 0), r = Math.random() * t; for (var i = 0; i < list.length; i++) { r -= list[i].w; if (r <= 0) return list[i]; } return list[0]; }
+  function newBucket() { clock = new Date(clock.getTime() + 5 * 60000); return { end: new Date(clock), attempts: 0, countries: {}, techs: {}, sev: 2 }; }
+  function fmtTime(d) { return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+  function windowLabel(b) { return fmtTime(new Date(b.end.getTime() - 5 * 60000)) + "–" + fmtTime(b.end); }
+  function seed() {
+    clock = new Date(clock.getTime() - 12 * 5 * 60000);
+    for (var i = 0; i < 11; i++) {
+      var b = newBucket(), n = 6 + Math.floor(Math.random() * 10);
+      for (var j = 0; j < n; j++) {
+        var o = pick(ORIGINS), t = pick(TECHS), c = [50, 58, 100, 116, 150, 288][Math.floor(Math.random() * 6)];
+        b.attempts += c; b.countries[o.name] = (b.countries[o.name] || 0) + c;
+        b.techs[t.id] = { tech: t, n: ((b.techs[t.id] || {}).n || 0) + c };
+      }
+      b.sev = Math.random() < .25 ? 0 : 1; buckets.push(b);
+    }
+    bucket = newBucket();
+  }
+  function addFeed(a) {
+    bucket.attempts += a.count;
+    bucket.countries[a.origin.name] = (bucket.countries[a.origin.name] || 0) + a.count;
+    bucket.techs[a.tech.id] = { tech: a.tech, n: ((bucket.techs[a.tech.id] || {}).n || 0) + a.count };
+    bucket.sev = Math.min(bucket.sev, SEV.indexOf(a.sev));
+    S.$("livecount").textContent = fmt(bucket.attempts);
+  }
+  function closeWindow() {
+    buckets.push(bucket); if (buckets.length > 12) buckets.shift();
+    bucket = newBucket(); windowStart = performance.now();
+    if (selected >= 0) selected = Math.max(0, selected - 1);
+    S.$("livecount").textContent = "0"; renderBuckets();
+  }
+  function renderBuckets() {
+    var host = S.$("buckets"), max = Math.max.apply(null, buckets.map(function (b) { return b.attempts; }).concat([1]));
+    var active = selected < 0 ? buckets.length - 1 : selected;
+    S.replace(host, buckets.map(function (b, i) {
+      var h = Math.max(8, Math.round(b.attempts / max * 82)), c = SEV[b.sev].color, on = i === active;
+      var sel = function () { selected = i; renderBuckets(); };
+      return el("button", { className: "bucket", type: "button", "aria-label": windowLabel(b) + " — " + fmt(b.attempts) + " attempts", "aria-pressed": on ? "true" : "false", onclick: sel, onmouseenter: sel,
+        style: "height:" + h + "px;background:" + (on ? c : "rgba(242,84,125,.35)") + ";box-shadow:" + (on ? "0 0 14px " + c + "80" : "none") + ";" });
+    }));
+    S.$("windowClock").textContent = windowLabel(bucket);
+    renderDetail(buckets[active]);
+  }
+  function renderDetail(b) {
+    if (!b) return;
+    var countries = Object.keys(b.countries).map(function (k) { return [k, b.countries[k]]; }).sort(function (x, y) { return y[1] - x[1]; });
+    var tops = Object.keys(b.techs).map(function (k) { return b.techs[k]; }).sort(function (x, y) { return y.n - x.n; }).slice(0, 2);
+    var sev = SEV[b.sev];
+    S.replace(S.$("detail"),
+      el("div", { style: "display:flex;align-items:center;justify-content:space-between;" },
+        el("span", { className: "mono", style: "font-size:12px;color:rgba(255,255,255,.55);" }, windowLabel(b)),
+        el("span", { style: "border:1px solid " + sev.color + "55;color:" + sev.color + ";border-radius:5px;padding:1px 6px;font-size:10px;font-weight:600;letter-spacing:.6px;" }, sev.label)),
+      el("div", { style: "display:flex;align-items:baseline;gap:8px;margin-top:10px;" },
+        el("span", { className: "mono", style: "font-size:24px;color:#fff;letter-spacing:-.6px;" }, fmt(b.attempts)),
+        el("span", { style: "font-size:12px;color:rgba(255,255,255,.5);" }, "attempts · " + countries.length + " countries")),
+      tops.map(function (t) {
+        var pct = Math.round(t.n / b.attempts * 100);
+        return el("div", { style: "margin-top:12px;" },
+          el("div", { style: "display:flex;justify-content:space-between;font-size:12px;" },
+            el("span", null, S.mitreLink(t.tech.id, "color:" + t.tech.color + ";"), " " + t.tech.name),
+            el("span", { className: "mono", style: "color:rgba(255,255,255,.5);" }, pct + "%")),
+          el("div", { className: "bar", style: "margin-top:7px;" }, el("i", { style: "width:" + pct + "%;background:" + t.tech.color + ";" })));
+      }),
+      el("div", { style: "margin-top:14px;font-size:12px;line-height:20px;color:rgba(255,255,255,.5);" }, "led by " + countries.slice(0, 3).map(function (c) { return c[0]; }).join(", ")));
+  }
+
+  /* ---- globe ---- */
+  if (!window.d3 || !window.topojson) {
+    S.$("mapFallback").style.display = "flex";
+    seed(); renderBuckets();
+    return;
+  }
+  var canvas = S.$("globe"), ctx = canvas.getContext("2d");
+  var projection = d3.geoOrthographic().clipAngle(90).rotate([-125, 18, 0]);
+  var path = d3.geoPath(projection, ctx), graticule = d3.geoGraticule10();
+  var land = null, borders = null, W = 0, H = 0, R = 0, cx = 0, cy = 0;
+  function resize() {
+    var r = canvas.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = r.width; H = r.height; canvas.width = W * dpr; canvas.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    R = Math.min(W, H) * 0.42; cx = W / 2; cy = H / 2; projection.scale(R).translate([cx, cy]);
+  }
+  window.addEventListener("resize", resize);
+  if (window.ResizeObserver) new ResizeObserver(function () { resize(); }).observe(S.$("stage"));
+
+  // T2.5: subresource integrity on the world-atlas fetch (sha384 of world-atlas@2.0.2/countries-110m.json).
+  d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json", {
+    integrity: "sha384-yOCJ+8ShBm8UDqtAVtAvxTDDf4gXo5edxl/YG0FmVC5OTmqVLl7utuVGBDEeZWHf", mode: "cors", credentials: "omit"
+  }).then(function (topo) {
+    land = topojson.feature(topo, topo.objects.countries);
+    borders = topojson.mesh(topo, topo.objects.countries, function (a, b) { return a !== b; });
+  }).catch(function () { /* globe still draws graticule + arcs without land */ });
+
+  var attacks = [], ripples = [], spin = RM ? 0 : 0.055, dragging = false, lastX = 0, lastY = 0;
+  canvas.addEventListener("pointerdown", function (e) { dragging = true; lastX = e.clientX; lastY = e.clientY; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener("pointerup", function () { dragging = false; });
+  canvas.addEventListener("pointermove", function (e) {
+    if (!dragging) return;
+    var rot = projection.rotate();
+    projection.rotate([rot[0] + (e.clientX - lastX) * 0.3, Math.max(-70, Math.min(70, rot[1] - (e.clientY - lastY) * 0.3)), rot[2]]);
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  function spawn() {
+    var origin = pick(ORIGINS), tech = pick(TECHS);
+    var sev = SEV[Math.random() < 0.18 ? 0 : Math.random() < 0.6 ? 1 : 2];
+    var count = [50, 58, 100, 116, 150, 174, 288][Math.floor(Math.random() * 7)];
+    attacks.push({ origin: origin, target: TARGET, tech: tech, sev: sev, count: count, t0: performance.now(), dur: 2600 + Math.random() * 1400, landed: false });
+    if (attacks.length > 26) attacks.shift();
+  }
+  function visible(coord) { var r = projection.rotate(); return d3.geoDistance(coord, d3.geoRotation(r).invert([0, 0])) < Math.PI / 2; }
+  function drawArc(a, t) {
+    var interp = d3.geoInterpolate(a.origin.coord, a.target.coord), n = 64, head = Math.floor(n * t), tail = Math.max(0, head - 22), pts = [];
+    for (var i = tail; i <= head; i++) pts.push(interp(i / n));
+    if (pts.length < 2) return;
+    ctx.save(); ctx.beginPath(); path({ type: "LineString", coordinates: pts });
+    ctx.strokeStyle = a.sev.color; ctx.lineWidth = 1.6; ctx.globalAlpha = .9; ctx.shadowColor = a.sev.color; ctx.shadowBlur = 12; ctx.lineCap = "round"; ctx.stroke(); ctx.restore();
+    var hc = interp(Math.min(1, t)), hp = projection(hc);
+    if (hp && visible(hc)) { ctx.save(); ctx.beginPath(); ctx.arc(hp[0], hp[1], 2.8, 0, 6.284); ctx.fillStyle = "#fff"; ctx.shadowColor = a.sev.color; ctx.shadowBlur = 14; ctx.fill(); ctx.restore(); }
+  }
+  function marker(coord, color, r) {
+    if (!visible(coord)) return; var p = projection(coord); if (!p) return;
+    ctx.save(); ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, 6.284); ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 12; ctx.fill(); ctx.restore();
+  }
+  function frame(now) {
+    if (!W) resize();
+    ctx.clearRect(0, 0, W, H);
+    if (!dragging) { var rot = projection.rotate(); projection.rotate([rot[0] + spin, rot[1], rot[2]]); }
+    var glow = ctx.createRadialGradient(cx, cy, R * .9, cx, cy, R * 1.35);
+    glow.addColorStop(0, "rgba(242,84,125,.13)"); glow.addColorStop(1, "rgba(242,84,125,0)");
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, R * 1.35, 0, 6.284); ctx.fill();
+    var sphere = ctx.createRadialGradient(cx - R * .35, cy - R * .4, R * .1, cx, cy, R);
+    sphere.addColorStop(0, "#2A2159"); sphere.addColorStop(1, "#100C26");
+    ctx.beginPath(); path({ type: "Sphere" }); ctx.fillStyle = sphere; ctx.fill();
+    ctx.beginPath(); path(graticule); ctx.strokeStyle = "rgba(242,84,125,.13)"; ctx.lineWidth = .6; ctx.stroke();
+    if (land) {
+      ctx.beginPath(); path(land); ctx.fillStyle = "rgba(220,214,255,.13)"; ctx.fill();
+      ctx.beginPath(); path(borders); ctx.strokeStyle = "rgba(242,84,125,.35)"; ctx.lineWidth = .7; ctx.stroke();
+    }
+    for (var i = attacks.length - 1; i >= 0; i--) {
+      var a = attacks[i], t = Math.min(1.4, (now - a.t0) / a.dur);
+      if (t >= 1 && !a.landed) { a.landed = true; addFeed(a); ripples.push({ coord: a.target.coord, t0: now, color: a.sev.color }); }
+      if (t > 1.35) { attacks.splice(i, 1); continue; }
+      drawArc(a, Math.min(1, t)); marker(a.origin.coord, "#C4173F", 3);
+    }
+    for (var j = ripples.length - 1; j >= 0; j--) {
+      var rp = ripples[j], tt = (now - rp.t0) / 1400;
+      if (tt > 1) { ripples.splice(j, 1); continue; }
+      if (!visible(rp.coord)) continue;
+      var p = projection(rp.coord); if (!p) continue;
+      ctx.save(); ctx.beginPath(); ctx.arc(p[0], p[1], 4 + tt * 26, 0, 6.284); ctx.strokeStyle = rp.color; ctx.globalAlpha = 1 - tt; ctx.lineWidth = 1.6; ctx.stroke(); ctx.restore();
+    }
+    marker(TARGET.coord, "#FF87A6", 4.2);
+    var shine = ctx.createRadialGradient(cx - R * .45, cy - R * .5, 0, cx - R * .45, cy - R * .5, R * 1.25);
+    shine.addColorStop(0, "rgba(255,255,255,.07)"); shine.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.save(); ctx.beginPath(); path({ type: "Sphere" }); ctx.clip(); ctx.fillStyle = shine; ctx.fillRect(0, 0, W, H); ctx.restore();
+    ctx.beginPath(); path({ type: "Sphere" }); ctx.strokeStyle = "rgba(242,84,125,.4)"; ctx.lineWidth = 1; ctx.stroke();
+    requestAnimationFrame(frame);
+  }
+
+  seed(); renderBuckets(); resize(); requestAnimationFrame(frame);
+  if (!RM) setInterval(spawn, 2100);
+  if (!RM) setInterval(closeWindow, WINDOW_MS);
+  setInterval(function () { S.$("windowProgress").style.width = Math.min(100, (performance.now() - windowStart) / WINDOW_MS * 100) + "%"; }, 400);
+  spawn();
+})();
+</script>
+</body>
+</html>

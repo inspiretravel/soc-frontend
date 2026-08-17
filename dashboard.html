@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Priority Queue — CyberTriageAI</title>
+<meta name="description" content="What needs a human today: honeypot attacks from the last 24 hours, collapsed into ranked MITRE ATT&CK categories.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+  @keyframes flash { 0% { transform: none; filter: none; } 22% { transform: scale(1.08); filter: brightness(1.7) drop-shadow(0 0 18px currentColor); } 100% { transform: none; filter: none; } }
+  @keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(220%); } }
+  @keyframes spinSlow { to { transform: rotate(360deg); } }
+  .spark { display: flex; align-items: flex-end; gap: 2px; height: 26px; }
+  .spark i { width: 4px; border-radius: 2px; display: block; transition: height .55s cubic-bezier(.22,1,.36,1), background .55s ease; }
+  .vol { display: flex; align-items: flex-end; gap: 3px; height: 120px; }
+  .vol i { flex: 1; border-radius: 3px 3px 1px 1px; display: block; transition: height .7s cubic-bezier(.22,1,.36,1), background .7s ease; }
+  .kpi { padding: 22px 24px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+  .kpi-n { font-family: Archivo, sans-serif; font-weight: 600; letter-spacing: -1.5px; line-height: 1.05; }
+  .row { display: grid; grid-template-columns: 4px minmax(0,1fr) auto; gap: 18px; align-items: center; padding: 16px 18px 16px 0; border-radius: 16px; border: 1px solid transparent; transition: background .3s, border-color .3s, transform .3s cubic-bezier(.22,1,.36,1); animation: rise .5s cubic-bezier(.22,1,.36,1) both; }
+  .row:hover { background: rgba(242,84,125,.08); border-color: rgba(242,84,125,.35); transform: translateX(3px); }
+  .row-sub { margin-top: 6px; font-size: 12px; color: rgba(255,255,255,.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .detail-btn { white-space: nowrap; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 500; color: #fff; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.16); border-radius: 50px; padding: 8px 15px; transition: background .3s, border-color .3s; }
+  .detail-btn[aria-expanded="true"] { background: rgba(242,84,125,.22); border-color: rgba(242,84,125,.55); }
+  .drawer { margin: 2px 12px 10px 22px; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(242,84,125,.28); background: rgba(242,84,125,.07); }
+  .drawer[hidden] { display: none; }
+  .member { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .case { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,.06); color: #fff; }
+  .case:hover { color: #fff; background: rgba(242,84,125,.06); }
+  .tech-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+  .tech-row > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #shell { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  #kpis { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 16px; }
+  #graphics { display: grid; grid-template-columns: minmax(0,1.55fr) minmax(0,1fr); gap: 16px; }
+  #grid { display: grid; grid-template-columns: minmax(0,1.55fr) minmax(0,1fr); gap: 16px; align-items: start; }
+  @media (max-width: 1100px) { #grid, #graphics, #kpis { grid-template-columns: minmax(0,1fr); } }
+  @media (max-width: 640px) { .row { grid-template-columns: 4px minmax(0,1fr); } .row > .row-right { grid-column: 2; justify-content: flex-start; } .row .spark { display: none; } }
+</style>
+</head>
+<body>
+
+<header id="site-header"></header>
+
+<div id="shell">
+
+  <section style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;">
+    <div>
+      <h1 style="font-family:Archivo,sans-serif;font-size:26px;font-weight:600;letter-spacing:-.5px;margin:0;">What needs a human today</h1>
+      <p id="subtitle" style="margin:6px 0 0;font-size:14px;color:rgba(255,255,255,.55);"></p>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <span class="chip" style="border:1px solid rgba(255,255,255,.16);color:rgba(255,255,255,.65);padding:7px 13px;">Last 24h</span>
+      <span class="chip" style="border:1px solid rgba(242,84,125,.4);background:rgba(242,84,125,.14);color:#fff;padding:7px 13px;">Grouped by category</span>
+    </div>
+  </section>
+
+  <section id="kpis" aria-label="Key figures"></section>
+
+  <section id="graphics">
+    <div class="panel" style="padding:18px 20px 20px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;width:34%;height:2px;background:linear-gradient(90deg,transparent,#F2547D,transparent);animation:sweep 3.4s linear infinite;"></div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:10px;"><span class="eyebrow">Attack volume · rolling 24h</span><span id="volTag"></span></div>
+        <div style="display:flex;align-items:baseline;gap:8px;"><span id="volNow" class="mono" style="font-size:20px;color:#fff;">0</span><span style="font-size:12px;color:rgba(255,255,255,.45);white-space:nowrap;">events / 30 min</span></div>
+      </div>
+      <div id="vol" class="vol" style="margin-top:16px;" aria-hidden="true"></div>
+      <div class="mono" style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.35);margin-top:8px;"><span>-24h</span><span>-12h</span><span>now</span></div>
+    </div>
+    <div class="panel" style="padding:18px 20px 20px;display:flex;align-items:center;gap:22px;">
+      <div style="position:relative;width:132px;height:132px;flex:0 0 auto;" role="img" aria-label="Severity mix ring">
+        <div id="ring" style="position:absolute;inset:0;border-radius:50%;transition:background .8s ease;"></div>
+        <div style="position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,rgba(255,255,255,0) 0deg,rgba(255,255,255,.35) 40deg,rgba(255,255,255,0) 90deg);animation:spinSlow 4.5s linear infinite;"></div>
+        <div style="position:absolute;inset:13px;border-radius:50%;background:#1C1640;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <span id="ringN" class="mono" style="font-size:20px;color:#fff;"></span>
+          <span style="font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:rgba(255,255,255,.45);">critical</span>
+        </div>
+      </div>
+      <div style="min-width:0;">
+        <div class="eyebrow">Severity mix · 24h</div>
+        <div id="mix" style="margin-top:14px;display:flex;flex-direction:column;gap:10px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="grid">
+    <div class="panel" style="padding:6px 6px 14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;gap:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:9px;">
+          <span class="dot" style="width:7px;height:7px;border-radius:50%;background:#5FE3B0;box-shadow:0 0 9px #5FE3B0;animation:pulse 2s ease-in-out infinite;"></span>
+          <span class="eyebrow" id="queueTitle">Priority queue</span>
+        </div>
+        <span style="font-size:12px;color:rgba(255,255,255,.4);">grouped by ATT&amp;CK technique</span>
+      </div>
+      <div id="queue" style="display:flex;flex-direction:column;gap:2px;padding:0 12px;"></div>
+      <p style="margin:16px 18px 0;font-size:12px;color:rgba(255,255,255,.4);">Every row is one attack category, not one alert. Open Detail to see which attackers sit inside it.</p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <section class="panel" style="padding:18px;">
+        <div class="eyebrow">What they're trying</div>
+        <div id="techs" style="margin-top:16px;display:flex;flex-direction:column;gap:15px;"></div>
+      </section>
+      <section class="panel" style="padding:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="eyebrow">Recent cases</div>
+          <span id="openCount" style="font-size:12px;color:rgba(255,255,255,.4);"></span>
+        </div>
+        <div id="cases" style="margin-top:8px;"></div>
+      </section>
+    </div>
+  </section>
+</div>
+
+<footer id="site-footer"></footer>
+
+<script src="assets/data.js"></script>
+<script src="assets/figures.js"></script>
+<script src="assets/site.js"></script>
+<script>
+(function () {
+  var S = window.Site, el = S.el, fmt = S.fmt, SEV = S.SEV, ST = S.STATS, RM = S.RM;
+  var embedded = S.embed("dashHeight", document.getElementById("shell"));
+  S.renderHeader("dashboard.html", S.livePill("demo data · last 24h"));
+  S.renderFooter();
+
+  // Subtitle: both numbers come from the same table, so they cannot disagree.
+  S.replace(S.$("subtitle"), fmt(ST.total24) + " raw events from the last 24 hours, collapsed into " + ST.categories + " ranked attack categories.");
+  S.replace(S.$("queueTitle"), "Priority queue · top " + ST.categories + " categories");
+
+  /* sparkline: purely decorative, deterministic per seed */
+  function spark(color, seed) {
+    var host = el("div", { className: "spark", "data-spark": color, "aria-hidden": "true" });
+    for (var i = 0; i < 14; i++) {
+      var h = 6 + Math.abs(Math.sin(seed + i * 1.7)) * 20;
+      host.appendChild(el("i", { style: "height:" + h.toFixed(0) + "px;background:" + color + (i > 10 ? "" : "55") + ";" }));
+    }
+    return host;
+  }
+  function animateSparks() {
+    document.querySelectorAll("[data-spark]").forEach(function (sp) {
+      var color = sp.getAttribute("data-spark"), bars = Array.prototype.slice.call(sp.children);
+      var heights = bars.map(function (b) { return parseFloat(b.style.height); });
+      heights.shift();
+      var last = heights[heights.length - 1] || 14;
+      heights.push(Math.max(5, Math.min(26, last + (Math.random() - 0.45) * 14)));
+      bars.forEach(function (b, i) { b.style.height = heights[i].toFixed(0) + "px"; b.style.background = color + (i > bars.length - 4 ? "" : "55"); });
+    });
+  }
+
+  /* KPIs — open cases and critical findings are computed; unique IPs is a PS figure */
+  var KPIS = [
+    { n: String(ST.openCases), label: "open cases needing review", sub: ST.cases.length + " investigations in the last 7 days", color: "#C4173F", accent: "rgba(255,59,92,.16)" },
+    { n: fmt(ST.critical24), label: "critical findings · 24h", sub: "events in categories rated CRITICAL", color: "#F2547D", accent: "rgba(242,84,125,.14)" },
+    { n: S.fig(ST.uniqueIps24h), label: "unique attacker IPs · 24h", sub: S.isFilled(ST.uniqueIps24h) ? "distinct source addresses" : "awaiting live figure", color: "#F2547D", accent: "rgba(242,84,125,.16)" }
+  ];
+  S.replace(S.$("kpis"), KPIS.map(function (k, i) {
+    return el("div", { className: "panel kpi", style: "background:linear-gradient(150deg," + k.accent + ",rgba(220,214,255,.03));" },
+      el("div", null,
+        el("div", { className: "kpi-n", style: "font-size:" + (i === 0 ? 54 : 44) + "px;color:" + k.color + ";" }, k.n),
+        el("div", { className: "eyebrow", style: "margin-top:8px;" }, k.label),
+        el("div", { style: "margin-top:6px;font-size:13px;color:rgba(255,255,255,.5);" }, k.sub)),
+      spark(k.color, i * 3.1));
+  }));
+
+  /* Priority queue */
+  function member(m) {
+    return el("div", { className: "member" },
+      el("span", { className: "mono", style: "font-size:13px;color:#fff;" }, m.ip),
+      el("span", { style: "font-size:12px;color:rgba(255,255,255,.5);flex:1;" }, m.c),
+      el("span", { className: "mono", style: "font-size:13px;color:rgba(255,255,255,.8);" }, fmt(m.n) + "×"),
+      el("span", { style: "font-size:11px;color:rgba(255,255,255,.4);width:34px;text-align:right;" }, m.ago));
+  }
+  var openDrawer = null;
+  S.replace(S.$("queue"), ST.queue.map(function (q, i) {
+    var drawer = el("div", { className: "drawer", id: "drawer-" + i, hidden: true },
+      el("div", { className: "eyebrow", style: "margin-bottom:10px;" }, "Top attackers in this group"),
+      q.members.map(member),
+      el("div", { style: "display:flex;gap:10px;margin-top:14px;" },
+        el("a", { className: "btn", "data-primary": "", href: "cases.html" }, "Open cases")));
+    var btn = el("button", { className: "detail-btn", type: "button", "aria-expanded": "false", "aria-controls": "drawer-" + i }, "Detail");
+    btn.addEventListener("click", function () {
+      var open = btn.getAttribute("aria-expanded") === "true";
+      if (openDrawer && openDrawer !== drawer) { openDrawer.hidden = true; openDrawer._btn.setAttribute("aria-expanded", "false"); openDrawer._btn.textContent = "Detail"; }
+      drawer.hidden = open; btn.setAttribute("aria-expanded", String(!open)); btn.textContent = open ? "Detail" : "Hide";
+      openDrawer = open ? null : drawer;
+    });
+    drawer._btn = btn;
+    return el("div", { style: "animation:rise .5s cubic-bezier(.22,1,.36,1) both;animation-delay:" + (i * 50) + "ms;" },
+      el("div", { className: "row" },
+        el("span", { style: "width:4px;height:52px;border-radius:3px;background:" + SEV[q.sev] + ";box-shadow:0 0 14px " + SEV[q.sev] + "66;" }),
+        el("div", { style: "min-width:0;" },
+          el("div", { style: "display:flex;align-items:center;gap:10px;flex-wrap:wrap;" },
+            S.mitreLink(q.id, "font-size:12px;"),
+            el("span", { style: "font-size:14px;font-weight:500;color:#fff;" }, q.name),
+            el("span", { className: "chip", style: "border:1px solid " + SEV[q.sev] + "55;color:" + SEV[q.sev] + ";" }, q.sev)),
+          el("div", { className: "row-sub" }, q.tactic + " · " + q.ips + " attacker IPs · " + q.countries + " countries · " + q.ago + " · " + q.read)),
+        el("div", { className: "row-right", style: "display:flex;align-items:center;gap:18px;" },
+          spark(SEV[q.sev], i * 2.3),
+          el("div", { style: "text-align:right;min-width:78px;" },
+            el("div", { className: "mono", style: "font-size:17px;color:#fff;" }, fmt(q.n)),
+            el("div", { style: "font-size:11px;color:rgba(255,255,255,.4);margin-top:3px;" }, "events")),
+          btn)),
+      drawer);
+  }));
+
+  /* What they're trying — top 5 of the SAME queue, so counts always match (INV3) */
+  var top = ST.queue.slice(0, 5), maxN = top[0] ? top[0].n : 1;
+  S.replace(S.$("techs"), top.map(function (t) {
+    return el("div", null,
+      el("div", { className: "tech-row" },
+        el("span", null, S.mitreLink(t.id, "font-size:11px;color:" + SEV[t.sev] + ";"), " " + t.name),
+        el("span", { className: "mono", style: "color:rgba(255,255,255,.5);" }, fmt(t.n))),
+      el("div", { className: "bar", style: "margin-top:8px;" }, el("i", { style: "width:" + Math.max(2, Math.round(t.n / maxN * 100)) + "%;background:" + SEV[t.sev] + ";" })));
+  }));
+
+  /* Attack volume — illustrative shape only (no live feed yet) */
+  S.replace(S.$("volTag"), S.demoTag("illustrative"));
+  var volHost = S.$("vol"), vol = [];
+  for (var i = 0; i < 48; i++) vol.push(40 + Math.abs(Math.sin(i / 3.2)) * 55 + Math.random() * 18);
+  function paintVol() {
+    var max = Math.max.apply(null, vol);
+    S.replace(volHost, vol.map(function (v, i) {
+      var h = Math.max(6, v / max * 116), hot = i > 43;
+      return el("i", { style: "height:" + h.toFixed(0) + "px;background:" + (hot ? "linear-gradient(180deg,#C4173F,#F2547D)" : "linear-gradient(180deg,rgba(242,84,125,.85),rgba(242,84,125,.25))") + ";" });
+    }));
+    S.$("volNow").textContent = fmt(Math.round(vol[vol.length - 1]));
+  }
+  paintVol();
+  if (!RM) setInterval(function () { vol.shift(); var last = vol[vol.length - 1]; vol.push(Math.max(22, Math.min(140, last + (Math.random() - 0.45) * 34))); paintVol(); }, 1600);
+  if (!RM) setInterval(animateSparks, 1200);
+
+  /* Severity mix — computed from the queue rows */
+  var mixRows = S.SEV_ORDER.filter(function (s) { return ST.bySev[s] > 0; }).map(function (s) {
+    return { k: s.charAt(0) + s.slice(1).toLowerCase(), v: ST.bySev[s] / ST.total24 * 100, c: SEV[s] };
+  });
+  S.$("ringN").textContent = fmt(ST.critical24);
+  S.replace(S.$("mix"), mixRows.map(function (m) {
+    return el("div", { style: "display:flex;align-items:center;gap:10px;" },
+      el("span", { style: "width:9px;height:9px;border-radius:3px;background:" + m.c + ";flex:0 0 auto;" }),
+      el("span", { style: "font-size:13px;color:rgba(255,255,255,.75);white-space:nowrap;" }, m.k),
+      el("span", { className: "mono", style: "margin-left:auto;font-size:13px;color:" + m.c + ";" }, (m.v < 1 ? m.v.toFixed(1) : Math.round(m.v)) + "%"));
+  }));
+  var acc = 0, stops = mixRows.map(function (m) { var from = acc; acc += m.v * 3.6; return m.c + " " + from.toFixed(1) + "deg " + acc.toFixed(1) + "deg"; });
+  S.$("ring").style.background = "conic-gradient(" + stops.join(",") + ")";
+
+  /* Recent cases — from the same case list the Cases page renders */
+  S.$("openCount").textContent = ST.openCases + " open";
+  S.replace(S.$("cases"), ST.cases.map(function (c) {
+    return el("a", { className: "case", href: "cases.html#" + c.id },
+      el("div", null,
+        el("div", { style: "font-size:14px;font-weight:500;" }, "Honeypot · " + c.date),
+        el("div", { style: "font-size:12px;color:rgba(255,255,255,.45);margin-top:3px;" }, fmt(c.findings) + " findings · " + c.status)),
+      el("div", { style: "text-align:right;" },
+        el("span", { className: "chip", style: "border:1px solid " + SEV[c.sev] + "55;color:" + SEV[c.sev] + ";" }, c.sev),
+        el("div", { className: "mono", style: "font-size:11px;color:rgba(255,255,255,.4);margin-top:5px;" }, c.id)));
+  }));
+})();
+</script>
+</body>
+</html>
