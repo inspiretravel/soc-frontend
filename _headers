@@ -1,8 +1,11 @@
 # Cloudflare Pages response headers for the CyberTriageAI static front end.
-# Deploy B: add the API origin (e.g. https://api.ipattern.co) to connect-src.
+# Matches the nginx CSP deployed in Phase 3 (Option B, same-origin with the API — see
+# docs/PHASE3_DEPLOY.md). d3, topojson and the world-atlas topology are vendored under
+# assets/ (see docs/PHASE3_DEPLOY.md "Self-hosted map dependencies"), so no third-party
+# script or connect origin is needed: script-src and connect-src are 'self'-only.
 /*
   X-Content-Type-Options: nosniff
   X-Frame-Options: SAMEORIGIN
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://cdn.jsdelivr.net; frame-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'none'; object-src 'none'
