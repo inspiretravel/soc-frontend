@@ -52,6 +52,19 @@
   var SEV = { CRITICAL: "#C4173F", HIGH: "#FFA85C", MEDIUM: "#6BC7F2", LOW: "#8A86A8" };
   var SEV_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
 
+  /* ---------- IP masking ------------------------------------------------- */
+  // Presentational only: the API and DATA keep full IPs (an approved decision — see
+  // docs/FIELD_MAPPING.md); every place the front end DISPLAYS one drops the last octet,
+  // so the map's "reported by country, never by address" claim is literally true.
+  // "34.78.74.222" -> "34.78.74.xxx"
+  function maskIp(ip) {
+    var s = String(ip || "");
+    var parts = s.split(".");
+    if (parts.length !== 4 || !parts.every(function (p) { return /^\d{1,3}$/.test(p); })) return s;
+    parts[3] = "xxx";
+    return parts.join(".");
+  }
+
   /* ---------- MITRE links ---------------------------------------------- */
   // T1021.002 -> https://attack.mitre.org/techniques/T1021/002/
   function mitreUrl(id) {
@@ -285,6 +298,6 @@
     SEV: SEV, SEV_ORDER: SEV_ORDER, mitreUrl: mitreUrl, mitreLink: mitreLink, fill: fill, tokenValue: tokenValue,
     STATS: STATS, renderHeader: renderHeader, renderFooter: renderFooter, logo: logo, livePill: livePill, demoTag: demoTag,
     embed: embed, DISCLAIMER: DISCLAIMER, RM: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    ready: ready, sourceBadge: sourceBadge, isLive: isLive, timeAgo: timeAgo, data: function () { return D; }, figures: function () { return F; }
+    ready: ready, sourceBadge: sourceBadge, isLive: isLive, timeAgo: timeAgo, maskIp: maskIp, data: function () { return D; }, figures: function () { return F; }
   };
 })();

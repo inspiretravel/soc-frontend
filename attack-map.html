@@ -22,6 +22,16 @@
   #mapFallback { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; padding: 24px; text-align: center; font-size: 14px; color: rgba(255,255,255,.6); }
   html[data-embedded] #shell { height: auto; }
   html[data-embedded] #stage { min-height: 560px; }
+  /* Common "100%-zoom" laptop screens (1366x768, 1280x800, ...) are wide enough for the
+     3-column desktop layout but too short for it to fit in one viewport-height — the legend
+     under the globe got clipped with no way to scroll to it. Below this height, behave like
+     the narrow-width fallback: let the page scroll instead of locking to the viewport. */
+  @media (max-height: 820px) {
+    #shell { height: auto; }
+    body { overflow-y: auto; }
+    #left { max-height: none; height: auto; }
+    #stage { min-height: 480px; }
+  }
   @media (max-width: 1200px) {
     #shell { grid-template-columns: minmax(0,1fr); height: auto; }
     body { overflow-y: auto; }
