@@ -227,11 +227,25 @@
   })();
 
   function sourceBadge() {
-    if (SOURCE.kind === "live") return livePill("live · " + (SOURCE.generatedAt ? "refreshed " + timeAgo(SOURCE.generatedAt) : "just now"), "#5FE3B0");
+    if (SOURCE.kind === "live") {
+      var pill = livePill("live · " + (SOURCE.generatedAt ? "refreshed " + timeAgo(SOURCE.generatedAt) : "just now"), "#5FE3B0");
+      pill.setAttribute("data-source-badge", "");
+      return pill;
+    }
     return el("span", { className: "pill", title: "The live feed was not reachable" + (SOURCE.error ? " (" + SOURCE.error + ")" : "") + " — showing the built-in sample." },
       el("span", { className: "dot", style: "background:#FFA85C;box-shadow:0 0 9px #FFA85C;" }), "sample data");
   }
   function isLive() { return SOURCE.kind === "live"; }
+
+  // Keep the "refreshed Ns ago" pill text current without a page reload.
+  setInterval(function () {
+    if (SOURCE.kind !== "live") return;
+    document.querySelectorAll("[data-source-badge]").forEach(function (pill) {
+      var label = "live · " + (SOURCE.generatedAt ? "refreshed " + timeAgo(SOURCE.generatedAt) : "just now");
+      var textNode = pill.lastChild;
+      if (textNode && textNode.nodeType === 3) textNode.textContent = label;
+    });
+  }, 15000);
 
   /* ---------- chrome: nav + footer -------------------------------------- */
   var NAV = [
