@@ -41,6 +41,7 @@
       <h1 style="font-family:Archivo,sans-serif;font-size:26px;font-weight:600;letter-spacing:-.5px;margin:0;">Pick a framework. The assessment writes itself.</h1>
       <p id="intro" style="margin:6px 0 0;font-size:14px;color:rgba(255,255,255,.55);max-width:70ch;"></p>
     </div>
+    <div id="rangeSel"></div>
   </section>
 
   <div id="fws" style="display:flex;gap:10px;flex-wrap:wrap;" role="group" aria-label="Choose a framework"></div>
@@ -83,7 +84,7 @@
 <script src="assets/site.js"></script>
 <script>
 window.Site.ready(function () {
-  var S = window.Site, el = S.el, fmt = S.fmt, D = S.data(), ST = S.STATS;
+  var S = window.Site, el = S.el, fmt = S.fmt;
   S.embed("refHeight", document.body);
   S.renderHeader("reference.html", S.sourceBadge());
   S.renderFooter();
@@ -91,37 +92,45 @@ window.Site.ready(function () {
   // Status is DERIVED from evidence, two states only (docs/FIELD_MAPPING.md §G): n > 0 → EVIDENCED, else NO EVIDENCE.
   var ST_COLOR = { EVIDENCED: "#C4173F", CLEAR: "#5FE3B0" };
   var LABEL = { EVIDENCED: "EVIDENCED", CLEAR: "NO EVIDENCE" };
+  var RANGE_WORDS = { day: "the last 24 hours", week: "the last 7 days", month: "the last 30 days", all: "all recorded time" };
+  var RANGE_WINDOW = { day: "24h window", week: "7-day window", month: "30-day window", all: "all-time window" };
 
-  S.replace(S.$("intro"), "Your honeypot evidence is already mapped against " + fmt(D.mitreTechniqueCount) + " MITRE ATT&CK Enterprise techniques. Choose the scheme you report against and we fill the threat assessment from the same findings — no re-typing, no invented controls.");
+  var FRAMEWORKS = [], fw = 0, csel = 0;
 
-  // Resolve each control's evidence count from the queue (or a derived token) so it can never drift from the dashboard.
-  var FRAMEWORKS = D.frameworks.map(function (f) {
-    var controls = f.controls.map(function (c) {
-      var n = c.from ? S.tokenValue(c.from) : 0;
-      var out = {}; Object.keys(c).forEach(function (k) { out[k] = c[k]; });
-      out.n = typeof n === "number" ? n : 0; out.line = S.fill(c.line);
-      out.status = out.n > 0 ? "EVIDENCED" : "CLEAR";
-      return out;
+  // Rebuilds FRAMEWORKS from the CURRENT D/ST (called on load and on every range switch —
+  // D/ST are replaced wholesale by a range fetch, so this can't be computed just once).
+  function buildFrameworks() {
+    var D = S.data(), ST = S.STATS, range = S.currentRange();
+    S.replace(S.$("intro"), "Your honeypot evidence is already mapped against " + fmt(D.mitreTechniqueCount) + " MITRE ATT&CK Enterprise techniques. Choose the scheme you report against and we fill the threat assessment from the same findings — no re-typing, no invented controls.");
+
+    // Resolve each control's evidence count from the queue (or a derived token) so it can never drift from the dashboard.
+    FRAMEWORKS = D.frameworks.map(function (f) {
+      var controls = f.controls.map(function (c) {
+        var n = c.from ? S.tokenValue(c.from) : 0;
+        var out = {}; Object.keys(c).forEach(function (k) { out[k] = c[k]; });
+        out.n = typeof n === "number" ? n : 0; out.line = S.fill(c.line);
+        out.status = out.n > 0 ? "EVIDENCED" : "CLEAR";
+        return out;
+      });
+      // Rating is DERIVED: worst severity among evidenced techniques in the selected range.
+      var evidTids = controls.filter(function (c) { return c.status === "EVIDENCED"; }).map(function (c) { return c.from; });
+      var worst = 0; ST.queue.forEach(function (q) { if (evidTids.indexOf(q.id) >= 0 || evidTids.indexOf("CRED") >= 0 && (q.id === "T1110" || q.id === "T1078")) worst = Math.max(worst, S.SEV_ORDER.length - S.SEV_ORDER.indexOf(q.sev)); });
+      var critN = ST.queue.filter(function (q) { return q.sev === "CRITICAL"; }).length, highN = ST.queue.filter(function (q) { return q.sev === "HIGH"; }).length;
+      var rating = critN ? "HIGH" : highN ? "MEDIUM" : ST.queue.length ? "LOW" : "NONE";
+      var ratingWhy = critN ? critN + " technique" + (critN === 1 ? "" : "s") + " observed at CRITICAL severity in " + RANGE_WORDS[range] + "." :
+                      highN ? highN + " technique" + (highN === 1 ? "" : "s") + " observed at HIGH severity in " + RANGE_WORDS[range] + "; nothing critical." :
+                      ST.queue.length ? "Only low/medium-severity activity in " + RANGE_WORDS[range] + "." : "No honeypot events in " + RANGE_WORDS[range] + ".";
+      var max = Math.max.apply(null, controls.map(function (c) { return c.n; }).concat([1]));
+      controls.forEach(function (c) { c.w = Math.round(c.n / max * 100); });
+      var stats;
+      if (f.key === "attack") stats = [["Tactics touched", ST.tacticsTouched + " of " + D.tactics.length]];
+      else if (f.key === "e8") stats = [["Strategies mapped", controls.length + " of 8"]];
+      else if (f.key === "nist") stats = [["Functions covered", "6 of 6"]];
+      else stats = [["Annex A controls", controls.length + " cited"]];
+      return { key: f.key, name: f.name, sub: S.fill(f.sub), scope: S.fill(f.scope), rating: rating, ratingWhy: ratingWhy, controls: controls, stats: stats };
     });
-    // Rating is DERIVED: worst severity among evidenced techniques in the last 24h.
-    var evidTids = controls.filter(function (c) { return c.status === "EVIDENCED"; }).map(function (c) { return c.from; });
-    var worst = 0; ST.queue.forEach(function (q) { if (evidTids.indexOf(q.id) >= 0 || evidTids.indexOf("CRED") >= 0 && (q.id === "T1110" || q.id === "T1078")) worst = Math.max(worst, S.SEV_ORDER.length - S.SEV_ORDER.indexOf(q.sev)); });
-    var critN = ST.queue.filter(function (q) { return q.sev === "CRITICAL"; }).length, highN = ST.queue.filter(function (q) { return q.sev === "HIGH"; }).length;
-    var rating = critN ? "HIGH" : highN ? "MEDIUM" : ST.queue.length ? "LOW" : "NONE";
-    var ratingWhy = critN ? critN + " technique" + (critN === 1 ? "" : "s") + " observed at CRITICAL severity in the last 24 hours." :
-                    highN ? highN + " technique" + (highN === 1 ? "" : "s") + " observed at HIGH severity in the last 24 hours; nothing critical." :
-                    ST.queue.length ? "Only low/medium-severity activity in the last 24 hours." : "No honeypot events in the last 24 hours.";
-    var max = Math.max.apply(null, controls.map(function (c) { return c.n; }).concat([1]));
-    controls.forEach(function (c) { c.w = Math.round(c.n / max * 100); });
-    var stats;
-    if (f.key === "attack") stats = [["Tactics touched", ST.tacticsTouched + " of " + D.tactics.length]];
-    else if (f.key === "e8") stats = [["Strategies mapped", controls.length + " of 8"]];
-    else if (f.key === "nist") stats = [["Functions covered", "6 of 6"]];
-    else stats = [["Annex A controls", controls.length + " cited"]];
-    return { key: f.key, name: f.name, sub: S.fill(f.sub), scope: S.fill(f.scope), rating: rating, ratingWhy: ratingWhy, controls: controls, stats: stats };
-  });
-
-  var fw = 0, csel = 0;
+    if (fw >= FRAMEWORKS.length) fw = 0;
+  }
 
   function renderFws() {
     S.replace(S.$("fws"), FRAMEWORKS.map(function (f, i) {
@@ -139,7 +148,8 @@ window.Site.ready(function () {
       })));
       return;
     }
-    // Tactic pressure computed from the queue: share of 24h events per ATT&CK tactic (all 14 Enterprise tactics).
+    // Tactic pressure computed from the queue: share of events (selected range) per ATT&CK tactic (all 14 Enterprise tactics).
+    var D = S.data(), ST = S.STATS;
     var maxT = Math.max.apply(null, D.tactics.map(function (t) { return ST.byTactic[t] || 0; }).concat([1]));
     var heaviest = D.tactics.slice().sort(function (a, b) { return (ST.byTactic[b] || 0) - (ST.byTactic[a] || 0); }).slice(0, 2);
     S.replace(wrap,
@@ -170,17 +180,18 @@ window.Site.ready(function () {
     var gaps = f.controls.filter(function (c) { return c.status === "CLEAR"; });
     var sel = f.controls[csel];
     var sevColor = f.rating === "HIGH" ? "#C4173F" : f.rating === "MEDIUM" ? "#FFA85C" : "#6BC7F2";
+    var winLabel = RANGE_WINDOW[S.currentRange()];
     S.replace(S.$("doc"),
       el("section", { style: "animation-delay:0ms;" }, el("h4", null, "Scope"), el("p", null, f.scope)),
       el("hr"),
       el("section", { style: "animation-delay:120ms;" }, el("h4", null, "Finding · " + (f.key === "e8" ? sel.name : sel.id)), el("p", null, sel.line),
-        el("p", { style: "margin-top:10px;font-size:12px;color:rgba(255,255,255,.42);" }, "Source: " + (sel.n ? fmt(sel.n) + " events, 24h window" : "no supporting events") + " · " + f.name)),
+        el("p", { style: "margin-top:10px;font-size:12px;color:rgba(255,255,255,.42);" }, "Source: " + (sel.n ? fmt(sel.n) + " events, " + winLabel : "no supporting events") + " · " + f.name)),
       el("hr"),
       el("section", { style: "animation-delay:240ms;" }, el("h4", null, "Overall rating"),
         el("div", { style: "display:flex;align-items:center;gap:12px;flex-wrap:wrap;" },
           el("span", { className: "chip", style: "border:1px solid " + sevColor + "66;color:" + sevColor + ";font-size:12px;padding:5px 10px;" }, f.rating),
           el("span", { style: "font-size:13px;color:rgba(255,255,255,.6);" },
-            f.controls.filter(function (c) { return c.status === "EVIDENCED"; }).length + " evidenced · " + gaps.length + " no evidence in this window")),
+            f.controls.filter(function (c) { return c.status === "EVIDENCED"; }).length + " evidenced · " + gaps.length + " no evidence in this " + winLabel)),
         el("p", { style: "margin-top:10px;" }, f.ratingWhy)),
       el("hr"),
       el("section", { style: "animation-delay:360ms;" }, el("h4", null, "Cannot be answered from this evidence"),
@@ -211,7 +222,13 @@ window.Site.ready(function () {
     requestAnimationFrame(function () { document.querySelectorAll(".bar > i[data-w]").forEach(function (i) { i.style.width = i.getAttribute("data-w") + "%"; }); });
   }
 
-  render();
+  function onRange() {
+    S.replace(S.$("rangeSel"), S.rangeSelector(S.currentRange()));
+    buildFrameworks();
+    render();
+  }
+  onRange();
+  S.onRangeChange(onRange);
 });
 </script>
 </body>

@@ -8,6 +8,6 @@
  * INV1: allTimeTotal must be >= the 24h total (sum of DATA.queue[].n).
  */
 window.FIGURES = /* FIGURES_BEGIN */ {
-  "allTimeTotal": null,
-  "uniqueIps24h": null
+  "allTimeTotal": 1212,
+  "uniqueIps24h": 81
 } /* FIGURES_END */;

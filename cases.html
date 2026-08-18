@@ -47,9 +47,12 @@
 
 <div id="shell">
   <aside class="panel" style="padding:8px;">
-    <div style="padding:12px 12px 10px;display:flex;align-items:center;justify-content:space-between;">
-      <span class="eyebrow">Investigations</span>
-      <span style="font-size:12px;color:rgba(255,255,255,.4);">last 7 days</span>
+    <div style="padding:12px 12px 10px;display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span class="eyebrow">Investigations</span>
+        <span id="listWindow" style="font-size:12px;color:rgba(255,255,255,.4);">last 7 days</span>
+      </div>
+      <div id="rangeSel"></div>
     </div>
     <div id="list" style="display:flex;flex-direction:column;gap:2px;" role="list"></div>
   </aside>
@@ -65,19 +68,12 @@
 <script src="assets/site.js"></script>
 <script>
 window.Site.ready(function () {
-  var S = window.Site, el = S.el, fmt = S.fmt, SEV = S.SEV, D = S.data(), RM = S.RM, LIVE = S.isLive();
-  var CASES = S.STATS.cases;   // findings / ips / techniques computed from the evidence tables (or case totals when live)
+  var S = window.Site, el = S.el, fmt = S.fmt, SEV = S.SEV, RM = S.RM;
   S.embed("casesHeight", document.getElementById("shell"));
-  S.renderHeader("cases.html", el("span", { style: "display:flex;gap:14px;align-items:center;" }, S.sourceBadge(), S.livePill(S.STATS.openCases + " open investigations")));
   S.renderFooter();
-  if (!CASES.length) {
-    S.replace(S.$("report"), el("section", { className: "panel", style: "padding:28px;" }, el("p", { style: "margin:0;font-size:15px;color:rgba(255,255,255,.6);" }, "No honeypot cases in the last 7 days.")));
-    return;
-  }
 
-  var sel = 0;
-  var hash = (location.hash || "").replace("#", "");
-  CASES.forEach(function (c, i) { if (c.id === hash) sel = i; });
+  var RANGE_LABEL = { day: "today", week: "last 7 days", month: "last 30 days", all: "all time" };
+  var CASES = [], sel = 0;
 
   function chip(text, color) { return el("span", { className: "chip", style: "border:1px solid " + color + "55;color:" + color + ";" }, text); }
 
@@ -97,6 +93,7 @@ window.Site.ready(function () {
   function techBadge(id) { return el("span", { style: "border:1px solid rgba(242,84,125,.35);border-radius:5px;padding:1px 6px;" }, S.mitreLink(id, "font-size:11px;")); }
 
   function renderReport() {
+    var D = S.data(), LIVE = S.isLive();
     var c = CASES[sel];
     var evMax = Math.max.apply(null, c.events.map(function (e) { return e.n; }));
 
@@ -217,8 +214,31 @@ window.Site.ready(function () {
     cycle();
   }
 
-  renderList();
-  renderReport();
+  function render() {
+    var range = S.currentRange();
+    S.replace(S.$("rangeSel"), S.rangeSelector(range));
+    S.$("listWindow").textContent = RANGE_LABEL[range];
+    S.renderHeader("cases.html", el("span", { style: "display:flex;gap:14px;align-items:center;" }, S.sourceBadge(), S.livePill(S.STATS.openCases + " open investigations")));
+
+    var prevId = CASES[sel] ? CASES[sel].id : (location.hash || "").replace("#", "");
+    CASES = S.STATS.cases;   // findings / ips / techniques computed from the evidence tables (or case totals when live)
+
+    if (!CASES.length) {
+      S.replace(S.$("list"), null);
+      S.replace(S.$("report"), el("section", { className: "panel", style: "padding:28px;" },
+        el("p", { style: "margin:0;font-size:15px;color:rgba(255,255,255,.6);" }, "No honeypot cases in " + RANGE_LABEL[range] + ".")));
+      return;
+    }
+
+    sel = 0;
+    CASES.forEach(function (c, i) { if (c.id === prevId) sel = i; });   // keep the same case selected across a range switch when it's still in range
+
+    renderList();
+    renderReport();
+  }
+
+  render();
+  S.onRangeChange(render);
 });
 </script>
 </body>

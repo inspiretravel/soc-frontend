@@ -193,7 +193,7 @@
         <div class="sat" style="transform:translate(-50%,-50%) rotate(300deg) translate(250px) rotate(-300deg);"><div><div class="badge" style="animation-delay:2.3s;background:rgba(48,18,40,.92);border-color:rgba(196,23,63,.42);"><span class="pin" style="background:#C4173F;box-shadow:0 0 10px #C4173F;"></span><span class="n" style="color:#FFD9E0;">Critical finding</span></div></div></div>
       </div>
       <div class="ring core">
-        <div class="core-in"><span class="core-n" id="attacksLabel">0</span><span class="core-l">Attacks recorded</span></div>
+        <div class="core-in"><span class="core-n" id="attacksLabel">0</span><span class="core-l">Attacks today</span></div>
       </div>
     </div>
   </section>
@@ -341,7 +341,7 @@ window.Site.ready(function () {
       if (t < 1) requestAnimationFrame(step);
     })(start);
   }
-  setTimeout(function () { countTo(S.$("attacksLabel"), ST.allTime, 2200); }, RM ? 200 : 1200);
+  setTimeout(function () { countTo(S.$("attacksLabel"), ST.total24, 2200); }, RM ? 200 : 1200);
 
   /* ---- copy that carries numbers is derived from DATA ---- */
   S.$("howTriage").textContent = fmt(ST.total24) + " near-identical events in the last 24 hours become " + ST.categories + " ranked attack categories, each tagged with the ATT&CK technique behind it and a severity you can defend.";

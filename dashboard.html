@@ -51,9 +51,9 @@
       <h1 style="font-family:Archivo,sans-serif;font-size:26px;font-weight:600;letter-spacing:-.5px;margin:0;">What needs a human today</h1>
       <p id="subtitle" style="margin:6px 0 0;font-size:14px;color:rgba(255,255,255,.55);"></p>
     </div>
-    <div style="display:flex;gap:8px;">
-      <span class="chip" style="border:1px solid rgba(255,255,255,.16);color:rgba(255,255,255,.65);padding:7px 13px;">Last 24h</span>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span class="chip" style="border:1px solid rgba(242,84,125,.4);background:rgba(242,84,125,.14);color:#fff;padding:7px 13px;">Grouped by category</span>
+      <div id="rangeSel"></div>
     </div>
   </section>
 
@@ -63,11 +63,11 @@
     <div class="panel" style="padding:18px 20px 20px;position:relative;overflow:hidden;">
       <div style="position:absolute;top:0;left:0;width:34%;height:2px;background:linear-gradient(90deg,transparent,#F2547D,transparent);animation:sweep 3.4s linear infinite;"></div>
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:10px;"><span class="eyebrow">Attack volume · rolling 24h</span><span id="volTag"></span></div>
-        <div style="display:flex;align-items:baseline;gap:8px;"><span id="volNow" class="mono" style="font-size:20px;color:#fff;">0</span><span style="font-size:12px;color:rgba(255,255,255,.45);white-space:nowrap;">events / 30 min</span></div>
+        <div style="display:flex;align-items:center;gap:10px;"><span class="eyebrow" id="volTitle">Attack volume · rolling 24h</span><span id="volTag"></span></div>
+        <div style="display:flex;align-items:baseline;gap:8px;"><span id="volNow" class="mono" style="font-size:20px;color:#fff;">0</span><span id="volUnit" style="font-size:12px;color:rgba(255,255,255,.45);white-space:nowrap;">events / 30 min</span></div>
       </div>
       <div id="vol" class="vol" style="margin-top:16px;" aria-hidden="true"></div>
-      <div class="mono" style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.35);margin-top:8px;"><span>-24h</span><span>-12h</span><span>now</span></div>
+      <div id="volAxis" class="mono" style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.35);margin-top:8px;"><span>-24h</span><span>-12h</span><span>now</span></div>
     </div>
     <div class="panel" style="padding:18px 20px 20px;display:flex;align-items:center;gap:22px;">
       <div style="position:relative;width:132px;height:132px;flex:0 0 auto;" role="img" aria-label="Severity mix ring">
@@ -79,7 +79,7 @@
         </div>
       </div>
       <div style="min-width:0;">
-        <div class="eyebrow">Severity mix · 24h</div>
+        <div class="eyebrow" id="mixTitle">Severity mix · 24h</div>
         <div id="mix" style="margin-top:14px;display:flex;flex-direction:column;gap:10px;"></div>
       </div>
     </div>
@@ -122,20 +122,28 @@
 <script src="assets/site.js"></script>
 <script>
 window.Site.ready(function () {
-  var S = window.Site, el = S.el, fmt = S.fmt, SEV = S.SEV, ST = S.STATS, RM = S.RM, LIVE = S.isLive();
+  var S = window.Site, el = S.el, fmt = S.fmt, SEV = S.SEV, RM = S.RM;
   var embedded = S.embed("dashHeight", document.getElementById("shell"));
   S.renderHeader("dashboard.html", S.sourceBadge());
   S.renderFooter();
 
-  // Subtitle: both numbers come from the same table, so they cannot disagree.
-  S.replace(S.$("subtitle"), fmt(ST.total24) + " raw events from the last 24 hours, collapsed into " + ST.categories + " ranked attack categories.");
-  S.replace(S.$("queueTitle"), "Priority queue · top " + ST.categories + " categories");
+  var RANGE_WORDS = { day: "the last 24 hours", week: "the last 7 days", month: "the last 30 days", all: "all recorded time" };
+  var RANGE_SHORT  = { day: "24h", week: "7d", month: "30d", all: "all-time" };
+  var firstRender = true;
 
-  /* sparkline: real hourly counts (last 14 h) when the live feed supplies them; otherwise decorative, deterministic per seed */
+  function render() {
+    var ST = S.STATS, LIVE = S.isLive(), range = S.currentRange();
+    S.replace(S.$("rangeSel"), S.rangeSelector(range));
+
+    // Subtitle: both numbers come from the same table, so they cannot disagree.
+    S.replace(S.$("subtitle"), fmt(ST.total24) + " raw events from " + RANGE_WORDS[range] + ", collapsed into " + ST.categories + " ranked attack categories.");
+    S.replace(S.$("queueTitle"), "Priority queue · top " + ST.categories + " categories");
+
+  /* sparkline: real per-bucket counts (last 14 points) when the live feed supplies them; otherwise decorative, deterministic per seed */
   function spark(color, seed, hourly) {
     if (hourly && hourly.length) {
       var last = hourly.slice(-14), max = Math.max.apply(null, last.concat([1]));
-      var h2 = el("div", { className: "spark", title: "events per hour, last 14h", "aria-label": "events per hour, last 14 hours" });
+      var h2 = el("div", { className: "spark", title: "events per bucket, recent history", "aria-label": "events per bucket, recent history" });
       last.forEach(function (v, i) { h2.appendChild(el("i", { style: "height:" + Math.max(3, Math.round(v / max * 26)) + "px;background:" + color + (i > 10 ? "" : "55") + ";" })); });
       return h2;
     }
@@ -146,7 +154,7 @@ window.Site.ready(function () {
     }
     return host;
   }
-  // KPI sparklines: live → total events per hour across all techniques
+  // KPI sparklines: live → total events per bucket across all techniques
   var kpiHourly = null;
   if (LIVE && ST.queue.length && ST.queue[0].hourly) {
     kpiHourly = ST.queue[0].hourly.map(function (_, i) { return ST.queue.reduce(function (s, q) { return s + ((q.hourly || [])[i] || 0); }, 0); });
@@ -164,9 +172,9 @@ window.Site.ready(function () {
 
   /* KPIs — open cases and critical findings are computed; unique IPs is a PS figure */
   var KPIS = [
-    { n: String(ST.openCases), label: "open cases needing review", sub: ST.cases.length + " investigations in the last 7 days", color: "#C4173F", accent: "rgba(255,59,92,.16)" },
-    { n: fmt(ST.critical24), label: "critical findings · 24h", sub: LIVE ? "events rated CRITICAL, last 24h" : "events in categories rated CRITICAL", color: "#F2547D", accent: "rgba(242,84,125,.14)" },
-    { n: S.fig(ST.uniqueIps24h), label: "unique attacker IPs · 24h", sub: S.isFilled(ST.uniqueIps24h) ? "distinct source addresses" : "awaiting live figure", color: "#F2547D", accent: "rgba(242,84,125,.16)" }
+    { n: String(ST.openCases), label: "open cases needing review", sub: ST.cases.length + " investigations, " + RANGE_WORDS[range], color: "#C4173F", accent: "rgba(255,59,92,.16)" },
+    { n: fmt(ST.critical24), label: "critical findings · " + RANGE_SHORT[range], sub: LIVE ? "events rated CRITICAL, " + RANGE_WORDS[range] : "events in categories rated CRITICAL", color: "#F2547D", accent: "rgba(242,84,125,.14)" },
+    { n: S.fig(ST.uniqueIps24h), label: "unique attacker IPs · " + RANGE_SHORT[range], sub: S.isFilled(ST.uniqueIps24h) ? "distinct source addresses" : "awaiting live figure", color: "#F2547D", accent: "rgba(242,84,125,.16)" }
   ];
   S.replace(S.$("kpis"), KPIS.map(function (k, i) {
     return el("div", { className: "panel kpi", style: "background:linear-gradient(150deg," + k.accent + ",rgba(220,214,255,.03));" },
@@ -228,48 +236,71 @@ window.Site.ready(function () {
       el("div", { className: "bar", style: "margin-top:8px;" }, el("i", { style: "width:" + Math.max(2, Math.round(t.n / maxN * 100)) + "%;background:" + SEV[t.sev] + ";" })));
   }));
 
-  /* Attack volume — real 30-minute buckets from the feed; illustrative shape only when on sample data */
-  var volHost = S.$("vol"), vol = [], volLive = !!(LIVE && ST.buckets30m && ST.buckets30m.length);
-  if (volLive) { vol = ST.buckets30m.slice(-48).map(function (b) { return b.n; }); }
-  else { S.replace(S.$("volTag"), S.demoTag("illustrative", "Sample data — shape is illustrative until the live feed answers")); for (var i = 0; i < 48; i++) vol.push(40 + Math.abs(Math.sin(i / 3.2)) * 55 + Math.random() * 18); }
-  function paintVol() {
-    var max = Math.max.apply(null, vol.concat([1]));
-    S.replace(volHost, vol.map(function (v, i) {
-      var h = Math.max(volLive ? 2 : 6, v / max * 116), hot = i > vol.length - 5;
-      return el("i", { title: volLive ? fmt(v) + " events" : null, style: "height:" + h.toFixed(0) + "px;background:" + (hot ? "linear-gradient(180deg,#C4173F,#F2547D)" : "linear-gradient(180deg,rgba(242,84,125,.85),rgba(242,84,125,.25))") + ";" });
+    /* Attack volume — real buckets from the feed; illustrative shape only when on sample data.
+     * "day" keeps the original 30-min buckets (ST.buckets30m); other ranges use the
+     * generalized ST.bucketsRange the API returns for them (3h/week, 1d/month & all). */
+    var VOL_META = {
+      day:   { title: "Attack volume · rolling 24h", unit: "events / 30 min", axis: ["-24h", "-12h", "now"] },
+      week:  { title: "Attack volume · last 7 days",  unit: "events / 3h",     axis: ["-7d", "-3.5d", "now"] },
+      month: { title: "Attack volume · last 30 days", unit: "events / day",    axis: ["-30d", "-15d", "now"] },
+      all:   { title: "Attack volume · all time",     unit: "events / day",    axis: ["-180d", "-90d", "now"] }
+    };
+    var vm = VOL_META[range];
+    S.$("volTitle").textContent = vm.title;
+    S.$("volUnit").textContent = vm.unit;
+    S.replace(S.$("volAxis"), vm.axis.map(function (t) { return el("span", null, t); }));
+
+    var volHost = S.$("vol"), vol = [];
+    var volBuckets = (range === "day") ? ST.buckets30m : ST.bucketsRange;
+    var volLive = !!(LIVE && volBuckets && volBuckets.length);
+    if (volLive) { vol = volBuckets.slice(-48).map(function (b) { return b.n; }); }
+    else { S.replace(S.$("volTag"), S.demoTag("illustrative", "Sample data — shape is illustrative until the live feed answers")); for (var i = 0; i < 48; i++) vol.push(40 + Math.abs(Math.sin(i / 3.2)) * 55 + Math.random() * 18); }
+    function paintVol() {
+      var max = Math.max.apply(null, vol.concat([1]));
+      S.replace(volHost, vol.map(function (v, i) {
+        var h = Math.max(volLive ? 2 : 6, v / max * 116), hot = i > vol.length - 5;
+        return el("i", { title: volLive ? fmt(v) + " events" : null, style: "height:" + h.toFixed(0) + "px;background:" + (hot ? "linear-gradient(180deg,#C4173F,#F2547D)" : "linear-gradient(180deg,rgba(242,84,125,.85),rgba(242,84,125,.25))") + ";" });
+      }));
+      S.$("volNow").textContent = fmt(Math.round(vol[vol.length - 1] || 0));
+    }
+    paintVol();
+    // Decorative-only animation for sample data — set up once, not re-registered on every range switch.
+    if (firstRender && !RM && !volLive) setInterval(function () { vol.shift(); var last = vol[vol.length - 1]; vol.push(Math.max(22, Math.min(140, last + (Math.random() - 0.45) * 34))); paintVol(); }, 1600);
+    if (firstRender && !RM && !LIVE) setInterval(animateSparks, 1200);
+
+    /* Severity mix — computed from the queue rows */
+    S.$("mixTitle").textContent = "Severity mix · " + RANGE_SHORT[range];
+    var mixRows = S.SEV_ORDER.filter(function (s) { return ST.bySev[s] > 0; }).map(function (s) {
+      return { k: s.charAt(0) + s.slice(1).toLowerCase(), v: ST.bySev[s] / ST.total24 * 100, c: SEV[s] };
+    });
+    S.$("ringN").textContent = fmt(ST.critical24);
+    S.replace(S.$("mix"), mixRows.map(function (m) {
+      return el("div", { style: "display:flex;align-items:center;gap:10px;" },
+        el("span", { style: "width:9px;height:9px;border-radius:3px;background:" + m.c + ";flex:0 0 auto;" }),
+        el("span", { style: "font-size:13px;color:rgba(255,255,255,.75);white-space:nowrap;" }, m.k),
+        el("span", { className: "mono", style: "margin-left:auto;font-size:13px;color:" + m.c + ";" }, (m.v < 1 ? m.v.toFixed(1) : Math.round(m.v)) + "%"));
     }));
-    S.$("volNow").textContent = fmt(Math.round(vol[vol.length - 1] || 0));
+    var acc = 0, stops = mixRows.map(function (m) { var from = acc; acc += m.v * 3.6; return m.c + " " + from.toFixed(1) + "deg " + acc.toFixed(1) + "deg"; });
+    S.$("ring").style.background = "conic-gradient(" + stops.join(",") + ")";
+
+    /* Recent cases — from the same case list the Cases page renders */
+    S.$("openCount").textContent = ST.openCases + " open";
+    S.replace(S.$("cases"), ST.cases.map(function (c) {
+      return el("a", { className: "case", href: "cases.html#" + c.id },
+        el("div", null,
+          el("div", { style: "font-size:14px;font-weight:500;" }, "Honeypot · " + c.date),
+          el("div", { style: "font-size:12px;color:rgba(255,255,255,.45);margin-top:3px;" }, fmt(c.findings) + " findings · " + c.status)),
+        el("div", { style: "text-align:right;" },
+          el("span", { className: "chip", style: "border:1px solid " + SEV[c.sev] + "55;color:" + SEV[c.sev] + ";" }, c.sev),
+          el("div", { className: "mono", style: "font-size:11px;color:rgba(255,255,255,.4);margin-top:5px;" }, c.id)));
+    }));
+    if (!ST.queue.length) S.replace(S.$("queue"), el("p", { style: "padding:24px 18px;font-size:14px;color:rgba(255,255,255,.55);" }, "No honeypot events in " + RANGE_WORDS[range] + "."));
+
+    firstRender = false;
   }
-  paintVol();
-  if (!RM && !volLive) setInterval(function () { vol.shift(); var last = vol[vol.length - 1]; vol.push(Math.max(22, Math.min(140, last + (Math.random() - 0.45) * 34))); paintVol(); }, 1600);
-  if (!RM && !LIVE) setInterval(animateSparks, 1200);
 
-  /* Severity mix — computed from the queue rows */
-  var mixRows = S.SEV_ORDER.filter(function (s) { return ST.bySev[s] > 0; }).map(function (s) {
-    return { k: s.charAt(0) + s.slice(1).toLowerCase(), v: ST.bySev[s] / ST.total24 * 100, c: SEV[s] };
-  });
-  S.$("ringN").textContent = fmt(ST.critical24);
-  S.replace(S.$("mix"), mixRows.map(function (m) {
-    return el("div", { style: "display:flex;align-items:center;gap:10px;" },
-      el("span", { style: "width:9px;height:9px;border-radius:3px;background:" + m.c + ";flex:0 0 auto;" }),
-      el("span", { style: "font-size:13px;color:rgba(255,255,255,.75);white-space:nowrap;" }, m.k),
-      el("span", { className: "mono", style: "margin-left:auto;font-size:13px;color:" + m.c + ";" }, (m.v < 1 ? m.v.toFixed(1) : Math.round(m.v)) + "%"));
-  }));
-  var acc = 0, stops = mixRows.map(function (m) { var from = acc; acc += m.v * 3.6; return m.c + " " + from.toFixed(1) + "deg " + acc.toFixed(1) + "deg"; });
-  S.$("ring").style.background = "conic-gradient(" + stops.join(",") + ")";
-
-  /* Recent cases — from the same case list the Cases page renders */
-  S.$("openCount").textContent = ST.openCases + " open";
-  S.replace(S.$("cases"), ST.cases.map(function (c) {
-    return el("a", { className: "case", href: "cases.html#" + c.id },
-      el("div", null,
-        el("div", { style: "font-size:14px;font-weight:500;" }, "Honeypot · " + c.date),
-        el("div", { style: "font-size:12px;color:rgba(255,255,255,.45);margin-top:3px;" }, fmt(c.findings) + " findings · " + c.status)),
-      el("div", { style: "text-align:right;" },
-        el("span", { className: "chip", style: "border:1px solid " + SEV[c.sev] + "55;color:" + SEV[c.sev] + ";" }, c.sev),
-        el("div", { className: "mono", style: "font-size:11px;color:rgba(255,255,255,.4);margin-top:5px;" }, c.id)));
-  }));
-  if (!ST.queue.length) S.replace(S.$("queue"), el("p", { style: "padding:24px 18px;font-size:14px;color:rgba(255,255,255,.55);" }, "No honeypot events in the last 24 hours."));
+  render();
+  S.onRangeChange(render);
 });
 </script>
 </body>

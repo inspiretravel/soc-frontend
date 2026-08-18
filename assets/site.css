@@ -28,6 +28,13 @@ a.mitre:hover { color: #FF87A6; text-decoration: underline; text-underline-offse
 .demo-tag { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.18); border-radius: 5px; padding: 2px 7px; white-space: nowrap; }
 .ps-fill { color: #FFA85C; font-size: .55em; letter-spacing: 0; font-family: "IBM Plex Mono", monospace; }
 
+/* range selector — day / week / month / all, shared by dashboard/cases/reference */
+.rangesel { display: flex; gap: 8px; flex-wrap: wrap; }
+.rangesel button { white-space: nowrap; cursor: pointer; font-family: "IBM Plex Sans", sans-serif; font-size: 13px; font-weight: 500; color: rgba(255,255,255,.62); background: transparent; border: 1px solid rgba(255,255,255,.14); border-radius: 50px; padding: 8px 16px; transition: all .3s cubic-bezier(.22,1,.36,1); }
+.rangesel button:hover { color: #fff; border-color: rgba(242,84,125,.5); }
+.rangesel button[aria-pressed="true"] { background: #F2547D; border-color: #F2547D; color: #150F2C; font-weight: 600; }
+.rangesel button[disabled] { opacity: .5; cursor: default; pointer-events: none; }
+
 /* header */
 #site-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding: 14px 26px; border-bottom: 1px solid rgba(255,255,255,.08); }
 .hdr-left { display: flex; align-items: center; gap: 34px; }

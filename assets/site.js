@@ -122,7 +122,7 @@
     STATS.tacticsTouched = tacticsTouched; STATS.categories = queue.length; STATS.cases = cases;
     STATS.openCases = openCases; STATS.allTime = F.allTimeTotal; STATS.uniqueIps24h = F.uniqueIps24h;
     STATS.critical24 = critical24; STATS.aiWrittenCases = (typeof F.aiWrittenCases === "number") ? F.aiWrittenCases : cases.length;
-    STATS.buckets5m = D.buckets5m || null; STATS.buckets30m = D.buckets30m || null; STATS.recent = D.recent || null;
+    STATS.buckets5m = D.buckets5m || null; STATS.buckets30m = D.buckets30m || null; STATS.bucketsRange = D.bucketsRange || null; STATS.recent = D.recent || null;
     STATS.node = D.node; STATS.nodeShort = D.nodeShort; STATS.nodeCoord = D.nodeCoord;
     return STATS;
   }
@@ -193,7 +193,7 @@
           }),
           events: (c.groups || []).map(function (g) { return { sev: g.sev || "LOW", ip: g.ip, tech: g.name, id: g.tid, n: g.n }; }) };
       }),
-      buckets5m: p.buckets_5m || null, buckets30m: p.buckets_30m || null,
+      buckets5m: p.buckets_5m || null, buckets30m: p.buckets_30m || null, bucketsRange: p.buckets_range || null,
       recent: (p.recent || []).map(function (r) { return { cc: r.cc, coord: CENTROID[r.cc] || null, sev: r.sev, tid: r.tid, at: r.at }; })
     };
     var f = p.figures || {};
@@ -211,20 +211,63 @@
   }
   function ready(cb) { if (readyState === "done") cb(); else pending.push(cb); }
 
-  (function fetchLive() {
-    var cfg = window.CONFIG || {}, url = cfg.apiUrl;
-    if (!url || typeof fetch !== "function") { finish("sample", "no api configured"); return; }
+  /* ---------- range selection: day / week / month / all --------------------
+   * Every page starts on "day" (byte-identical to the site's original,
+   * pre-range behaviour). Switching ranges re-fetches ?range=X, remaps and
+   * recomputes STATS, then notifies whatever the current page registered via
+   * onRangeChange — it does NOT fall back to sample data on a failed range
+   * switch (only the very first load does that), so a transient network blip
+   * after the page already has live data just leaves the last good view up. */
+  var CURRENT_RANGE = "day", rangeListeners = [], rangeBusy = false;
+  function fetchRange(range, isInitial) {
+    var cfg = window.CONFIG || {}, base = cfg.apiUrl;
+    if (!base || typeof fetch !== "function") {
+      if (isInitial) finish("sample", "no api configured");
+      return Promise.resolve();
+    }
+    var url = base + (base.indexOf("?") >= 0 ? "&" : "?") + "range=" + encodeURIComponent(range);
     var ctl = (typeof AbortController === "function") ? new AbortController() : null;
     var timer = setTimeout(function () { if (ctl) ctl.abort(); }, cfg.fetchTimeoutMs || 5000);
-    fetch(url, { method: "GET", credentials: "omit", mode: "cors", cache: "default", signal: ctl ? ctl.signal : undefined })
+    return fetch(url, { method: "GET", credentials: "omit", mode: "cors", cache: "default", signal: ctl ? ctl.signal : undefined })
       .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(function (p) {
         clearTimeout(timer);
         if (!p || !Array.isArray(p.queue) || !p.figures) throw new Error("bad payload");
-        var m = mapPayload(p); D = m.data; F = m.figures; finish("live");
+        var m = mapPayload(p); D = m.data; F = m.figures; CURRENT_RANGE = p.range || range;
+        if (isInitial) {
+          finish("live");
+        } else {
+          SOURCE.kind = "live"; SOURCE.error = null; SOURCE.generatedAt = F.generatedAt || null;
+          computeStats();
+          rangeListeners.forEach(function (cb) { try { cb(CURRENT_RANGE); } catch (e) { if (window.console) console.error(e); } });
+        }
       })
-      .catch(function (e) { clearTimeout(timer); finish("sample", String(e && e.message || e)); });
-  })();
+      .catch(function (e) {
+        clearTimeout(timer);
+        if (isInitial) finish("sample", String(e && e.message || e));
+        else if (window.console) console.error("range switch failed:", e);
+      });
+  }
+  fetchRange("day", true);   // initial load — identical request/behaviour to the original fetchLive()
+
+  function setRange(range) {
+    if (range === CURRENT_RANGE || rangeBusy) return Promise.resolve();
+    rangeBusy = true;
+    return fetchRange(range, false).then(function () { rangeBusy = false; }, function () { rangeBusy = false; });
+  }
+  function onRangeChange(cb) { rangeListeners.push(cb); }
+  function currentRange() { return CURRENT_RANGE; }
+
+  var RANGE_LABELS = [["day", "Day"], ["week", "Week"], ["month", "Month"], ["all", "All"]];
+  // Builds a fresh button group each call — pages rebuild it (via onRangeChange)
+  // so the pressed state always reflects the range just switched to.
+  function rangeSelector(current) {
+    return el("div", { className: "rangesel", role: "group", "aria-label": "Time range" },
+      RANGE_LABELS.map(function (r) {
+        return el("button", { type: "button", "aria-pressed": r[0] === current ? "true" : "false",
+          onclick: function () { setRange(r[0]); } }, r[1]);
+      }));
+  }
 
   function sourceBadge() {
     if (SOURCE.kind === "live") {
@@ -312,6 +355,7 @@
     SEV: SEV, SEV_ORDER: SEV_ORDER, mitreUrl: mitreUrl, mitreLink: mitreLink, fill: fill, tokenValue: tokenValue,
     STATS: STATS, renderHeader: renderHeader, renderFooter: renderFooter, logo: logo, livePill: livePill, demoTag: demoTag,
     embed: embed, DISCLAIMER: DISCLAIMER, RM: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    ready: ready, sourceBadge: sourceBadge, isLive: isLive, timeAgo: timeAgo, maskIp: maskIp, data: function () { return D; }, figures: function () { return F; }
+    ready: ready, sourceBadge: sourceBadge, isLive: isLive, timeAgo: timeAgo, maskIp: maskIp, data: function () { return D; }, figures: function () { return F; },
+    setRange: setRange, onRangeChange: onRangeChange, currentRange: currentRange, rangeSelector: rangeSelector
   };
 })();
