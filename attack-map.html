@@ -15,10 +15,11 @@
   @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
   #shell { display: grid; grid-template-columns: 300px minmax(0,1fr) 320px; gap: 16px; padding: 16px; height: calc(100vh - 61px); }
   #stage { position: relative; flex: 1; min-height: 0; }
-  canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+  canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
   canvas:active { cursor: grabbing; }
   #legend span { white-space: nowrap; }
-  .bucket { flex: 1; border: 0; padding: 0; border-radius: 4px 4px 2px 2px; cursor: pointer; transition: background .3s, height .5s cubic-bezier(.22,1,.36,1); }
+  .bucket { flex: 1; height: 100%; display: flex; align-items: flex-end; border: 0; padding: 0; background: transparent; cursor: pointer; }
+  .bucket-fill { width: 100%; min-height: 8px; border-radius: 4px 4px 2px 2px; transition: background .3s, height .5s cubic-bezier(.22,1,.36,1); }
   #mapFallback { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; padding: 24px; text-align: center; font-size: 14px; color: rgba(255,255,255,.6); }
   html[data-embedded] #shell { height: auto; }
   html[data-embedded] #stage { min-height: 560px; }
@@ -216,8 +217,8 @@ window.Site.ready(function () {
     S.replace(host, buckets.map(function (b, i) {
       var h = Math.max(8, Math.round(b.attempts / max * 82)), c = SEV[b.sev].color, on = i === active;
       var sel = function () { selected = i; renderBuckets(); };
-      return el("button", { className: "bucket", type: "button", "aria-label": windowLabel(b) + " — " + fmt(b.attempts) + " attempts", "aria-pressed": on ? "true" : "false", onclick: sel, onmouseenter: sel,
-        style: "height:" + h + "px;background:" + (on ? c : "rgba(242,84,125,.35)") + ";box-shadow:" + (on ? "0 0 14px " + c + "80" : "none") + ";" });
+      return el("button", { className: "bucket", type: "button", "aria-label": windowLabel(b) + " — " + fmt(b.attempts) + " attempts", "aria-pressed": on ? "true" : "false", onclick: sel, onmouseenter: sel },
+        el("span", { className: "bucket-fill", style: "height:" + h + "px;background:" + (on ? c : "rgba(242,84,125,.35)") + ";box-shadow:" + (on ? "0 0 14px " + c + "80" : "none") + ";" }));
     }));
     S.$("windowClock").textContent = windowLabel(bucket);
     renderDetail(buckets[active]);
