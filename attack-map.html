@@ -101,6 +101,7 @@
         <span style="display:flex;align-items:center;gap:7px;"><i style="width:9px;height:9px;border-radius:50%;background:#C4173F;display:inline-block;"></i>attack origin</span>
         <span style="display:flex;align-items:center;gap:7px;"><i style="width:9px;height:9px;border-radius:50%;background:#FF87A6;display:inline-block;"></i>honeypot node · Australia</span>
         <span style="display:flex;align-items:center;gap:7px;"><i style="width:16px;height:2px;background:linear-gradient(90deg,#F2547D,#C4173F);display:inline-block;"></i>live session</span>
+        <span style="flex-basis:100%;font-size:11px;color:rgba(255,255,255,.38);">Arcs fan out to Australian capital cities for illustration only — every event lands on one honeypot node.</span>
       </div>
     </div>
   </main>
@@ -116,7 +117,7 @@
     </section>
     <section class="panel" style="padding:18px;">
       <div class="eyebrow">Coverage</div>
-      <p style="margin:10px 0 0;font-size:14px;line-height:22px;color:rgba(255,255,255,.6);">One honeypot node, hosted in Australia. We report by country, never by street address — the map shows the nation under attack, not a building.</p>
+      <p style="margin:10px 0 0;font-size:14px;line-height:22px;color:rgba(255,255,255,.6);">One honeypot node, hosted in Australia. We report by country, never by street address — the map shows the nation under attack, not a building. The arcs are fanned across Australia's capital cities to illustrate that; every real event lands on the single node.</p>
     </section>
   </aside>
 </div>
@@ -153,8 +154,22 @@ window.Site.ready(function () {
   var LIVE_FEED = !!(LIVE && ST.buckets30m && ST.buckets30m.length);
   S.replace(S.$("feedTag"), LIVE_FEED ? S.demoTag("replay · last " + ((ST.recent || []).length) + " events") : S.demoTag("simulated feed", "Sample data — the feed is simulated until the live API answers"));
 
-  // T1.3: one destination only — the single Australian node (region-level coordinate; no city named).
+  // T1.3: there is ONE real destination — the single Australian node (region-level coordinate; no city named).
   var TARGET = { name: D.nodeShort, coord: D.nodeCoord };
+  // ILLUSTRATIVE landing points: arcs are fanned across Australia's capital cities / major
+  // data-centre regions so the map reads as "the nation under attack". This is a visual device
+  // only — every real event lands on the single node above, and the page says so on the map.
+  var LANDINGS = [
+    { name: "Sydney",    coord: [151.2093, -33.8688] },
+    { name: "Melbourne", coord: [144.9631, -37.8136] },
+    { name: "Brisbane",  coord: [153.0251, -27.4698] },
+    { name: "Perth",     coord: [115.8605, -31.9505] },
+    { name: "Adelaide",  coord: [138.6007, -34.9285] },
+    { name: "Canberra",  coord: [149.1300, -35.2809] },
+    { name: "Hobart",    coord: [147.3272, -42.8821] },
+    { name: "Darwin",    coord: [130.8456, -12.4634] }
+  ];
+  function landing() { return LANDINGS[Math.floor(Math.random() * LANDINGS.length)]; }
   var ORIGINS = D.origins.filter(function (o) { return o.coord; });
   // Technique share on the map = the top four queue categories, weighted by their real 24h counts.
   var TECHS = ST.queue.slice(0, 4).map(function (q) { return { id: q.id, name: q.name, color: S.SEV[q.sev], w: Math.round(q.n / ST.total24 * 100) }; });
@@ -321,14 +336,14 @@ window.Site.ready(function () {
       var r = REPLAY[replayIdx++ % REPLAY.length];
       var sevObj = SEV.filter(function (x) { return x.label === r.sev; })[0] || SEV[2];
       var techObj = TECHS.filter(function (t) { return t.id === r.tid; })[0] || { id: r.tid, name: r.tid, color: sevObj.color, w: 0 };
-      attacks.push({ origin: { name: r.cc, coord: r.coord }, target: TARGET, tech: techObj, sev: sevObj, count: 0, replay: true, t0: performance.now(), dur: 2600 + Math.random() * 1400, landed: false });
+      attacks.push({ origin: { name: r.cc, coord: r.coord }, target: landing(), tech: techObj, sev: sevObj, count: 0, replay: true, t0: performance.now(), dur: 2600 + Math.random() * 1400, landed: false });
       if (attacks.length > 26) attacks.shift();
       return;
     }
     var origin = pick(ORIGINS), tech = pick(TECHS);
     var sev = SEV[Math.random() < 0.18 ? 0 : Math.random() < 0.6 ? 1 : 2];
     var count = [50, 58, 100, 116, 150, 174, 288][Math.floor(Math.random() * 7)];
-    attacks.push({ origin: origin, target: TARGET, tech: tech, sev: sev, count: count, t0: performance.now(), dur: 2600 + Math.random() * 1400, landed: false });
+    attacks.push({ origin: origin, target: landing(), tech: tech, sev: sev, count: count, t0: performance.now(), dur: 2600 + Math.random() * 1400, landed: false });
     if (attacks.length > 26) attacks.shift();
   }
   function visible(coord) { var r = projection.rotate(); return d3.geoDistance(coord, d3.geoRotation(r).invert([0, 0])) < Math.PI / 2; }
@@ -373,6 +388,8 @@ window.Site.ready(function () {
       var p = projection(rp.coord); if (!p) continue;
       ctx.save(); ctx.beginPath(); ctx.arc(p[0], p[1], 4 + tt * 26, 0, 6.284); ctx.strokeStyle = rp.color; ctx.globalAlpha = 1 - tt; ctx.lineWidth = 1.6; ctx.stroke(); ctx.restore();
     }
+    // Illustrative city landing points (small), plus the real node (larger, brighter).
+    for (var k = 0; k < LANDINGS.length; k++) marker(LANDINGS[k].coord, "rgba(255,135,166,.55)", 2.4);
     marker(TARGET.coord, "#FF87A6", 4.2);
     var shine = ctx.createRadialGradient(cx - R * .45, cy - R * .5, 0, cx - R * .45, cy - R * .5, R * 1.25);
     shine.addColorStop(0, "rgba(255,255,255,.07)"); shine.addColorStop(1, "rgba(255,255,255,0)");
