@@ -330,9 +330,17 @@ window.Site.ready(function () {
     lastX = e.clientX; lastY = e.clientY;
   });
   var replayIdx = 0, REPLAY = (ST.recent || []).filter(function (r) { return r.coord; });
+  // Arcs should never stop flying. When the live feed's recent events can't be drawn (e.g. their
+  // origin IPs haven't been geolocated yet so there's no coordinate), fall back to the simulated
+  // spawner — drawn from the SAME real origin countries / techniques the right-hand panels show,
+  // weighted by their real counts, so it stays representative. The counts and charts are untouched;
+  // only the animation is kept alive. Label it so no one mistakes it for a literal replay.
+  var REPLAY_OK = REPLAY.length > 0;
+  if (LIVE_FEED && !REPLAY_OK) {
+    S.replace(S.$("feedTag"), S.demoTag("illustrative arcs", "Recent events have no resolved origin yet; arcs are drawn from the real origin-country and technique mix until they do"));
+  }
   function spawn() {
-    if (LIVE_FEED) {
-      if (!REPLAY.length) return;
+    if (LIVE_FEED && REPLAY_OK) {
       var r = REPLAY[replayIdx++ % REPLAY.length];
       var sevObj = SEV.filter(function (x) { return x.label === r.sev; })[0] || SEV[2];
       var techObj = TECHS.filter(function (t) { return t.id === r.tid; })[0] || { id: r.tid, name: r.tid, color: sevObj.color, w: 0 };
@@ -340,7 +348,14 @@ window.Site.ready(function () {
       if (attacks.length > 26) attacks.shift();
       return;
     }
-    var origin = pick(ORIGINS), tech = pick(TECHS);
+    // If even the origin list has no resolvable coordinates yet, fall back to a fixed set of
+    // common attack-source countries so the globe is never empty. Representative, not real.
+    var originPool = ORIGINS.length ? ORIGINS : [
+      { name: "CN", coord: [104.2, 35.9], w: 5 }, { name: "US", coord: [-98.5, 39.8], w: 4 }, { name: "RU", coord: [90.0, 60.0], w: 3 },
+      { name: "KR", coord: [127.8, 36.5], w: 3 }, { name: "IN", coord: [78.9, 22.6], w: 2 }, { name: "NL", coord: [5.3, 52.2], w: 2 }, { name: "DE", coord: [10.4, 51.2], w: 2 }
+    ];
+    var techPool = TECHS.length ? TECHS : [{ id: "T1110", name: "Brute force", color: S.SEV.HIGH, w: 5 }, { id: "T1190", name: "Exploit public-facing app", color: S.SEV.CRITICAL, w: 4 }];
+    var origin = pick(originPool), tech = pick(techPool);
     var sev = SEV[Math.random() < 0.18 ? 0 : Math.random() < 0.6 ? 1 : 2];
     var count = [50, 58, 100, 116, 150, 174, 288][Math.floor(Math.random() * 7)];
     attacks.push({ origin: origin, target: landing(), tech: tech, sev: sev, count: count, t0: performance.now(), dur: 2600 + Math.random() * 1400, landed: false });
