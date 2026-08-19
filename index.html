@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CyberTriageAI — real attacks, triaged into decisions</title>
-<meta name="description" content="CyberTriageAI captures real internet attacks on a Melbourne honeypot and auto-triages each one into a prioritised, MITRE ATT&CK-mapped ticket. Portfolio project by a SOC analyst candidate in Australia.">
+<meta name="description" content="CyberTriageAI captures real internet attacks on an Australian honeypot and auto-triages each one into a prioritised, MITRE ATT&CK-mapped ticket. Portfolio project by a SOC analyst candidate in Australia.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -166,9 +166,9 @@
 
   <section class="hero wrap" aria-labelledby="h1">
     <div class="hero-copy">
-      <div class="live-badge"><span class="dot"></span>Live honeypot · Melbourne, Australia · recording right now</div>
+      <div class="live-badge"><span class="dot"></span>Live honeypot · Australia · recording right now</div>
       <h1 id="h1"><span id="typedA"></span><span class="b" id="typedB"></span><span class="caret" aria-hidden="true"></span></h1>
-      <p class="lede"><b>The problem:</b> SOC teams drown in alert volume, and junior analysts burn hours on repetitive first-pass triage of attacks that all look the same. <b>What this does:</b> CyberTriageAI captures real internet attacks on a single honeypot node in Melbourne and auto-triages each one into a structured, prioritised, MITRE ATT&amp;CK-mapped ticket — so the analyst starts from a decision, not a raw log line.</p>
+      <p class="lede"><b>The problem:</b> SOC teams drown in alert volume, and junior analysts burn hours on repetitive first-pass triage of attacks that all look the same. <b>What this does:</b> CyberTriageAI captures real internet attacks on a single honeypot node in Australia and auto-triages each one into a structured, prioritised, MITRE ATT&amp;CK-mapped ticket — so the analyst starts from a decision, not a raw log line.</p>
       <div class="hero-ctas">
         <a class="cta" href="dashboard.html">View the live threat feed
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h13M12.5 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
@@ -205,7 +205,7 @@
           <span class="eyebrow-pink">Live attack map</span>
           <h2 style="font-size:40px;margin-top:12px;">This is happening to Australia right now.</h2>
         </div>
-        <p style="max-width:420px;margin:0;font-size:15px;line-height:24px;color:rgba(255,255,255,.55);">Every arc is a real attack pattern reaching our honeypot in Melbourne. Drag the globe to look around — reported by country, never by address.</p>
+        <p style="max-width:420px;margin:0;font-size:15px;line-height:24px;color:rgba(255,255,255,.55);">Every arc is a real attack pattern reaching our honeypot in Australia. Drag the globe to look around — reported by country, never by address.</p>
       </div>
       <div class="map-frame">
         <iframe data-frame="1" src="attack-map.html" title="Live attack map" loading="lazy"></iframe>
@@ -383,7 +383,7 @@ window.Site.ready(function () {
     { num: "01", title: "Priority queue", desc: "Grouped by attacker technique, ranked by what would actually hurt.", live: "dashboard.html",
       caption: fmt(ST.total24) + " raw events from the last 24 hours, collapsed into " + ST.categories + " ranked rows. The loudest category is rarely the dangerous one." },
     { num: "02", title: "Live attack map", desc: "Where it came from, where it landed, how often.", live: "attack-map.html",
-      caption: "Attacks traced to origin country, with per-country and per-technique breakdowns. One destination: the Melbourne node." },
+      caption: "Attacks traced to origin country, with per-country and per-technique breakdowns. One destination: the Australian node." },
     { num: "03", title: "Cases, written out", desc: "What's happening · why it matters · what to do next.", live: "cases.html",
       caption: "Three short paragraphs a non-specialist can read — every claim links back to the raw events behind it. " + ST.cases.length + " cases in the last 7 days." },
     { num: "04", title: "Framework mapping", desc: "ATT&CK, Essential Eight, NIST CSF, ISO 27001 — pick one, the assessment fills itself.", live: "reference.html",

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>About / How it works — CyberTriageAI</title>
-<meta name="description" content="Architecture, methodology and honesty notes for CyberTriageAI — a portfolio SOC triage project built on a real Melbourne honeypot.">
+<meta name="description" content="Architecture, methodology and honesty notes for CyberTriageAI — a portfolio SOC triage project built on a real Australian honeypot.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -36,12 +36,12 @@
 <main>
   <span class="eyebrow" style="color:#F2547D;">About · How it works</span>
   <h1 style="margin-top:12px;">Real attacks in. Decisions out.</h1>
-  <p class="lede">CyberTriageAI is a portfolio project built for a SOC L1 / Security Analyst job search in Australia. It runs one honeypot node in Melbourne, keeps every attempt made against it, and has an AI write each day's activity up as a prioritised, MITRE ATT&amp;CK-mapped case — the first-pass triage a junior analyst would otherwise do by hand.</p>
+  <p class="lede">CyberTriageAI is a portfolio project built for a SOC L1 / Security Analyst job search in Australia. It runs one honeypot node in Australia, keeps every attempt made against it, and has an AI write each day's activity up as a prioritised, MITRE ATT&amp;CK-mapped case — the first-pass triage a junior analyst would otherwise do by hand.</p>
 
   <section class="panel box" style="margin-top:32px;">
     <h2>Pipeline</h2>
     <div class="flow">
-      <div class="step"><div class="k">01 · capture</div><div class="t">Honeypot</div><div class="d">Cowrie (SSH / Telnet) and Dionaea (SMB, HTTP, FTP and more) on a single Melbourne node.</div></div>
+      <div class="step"><div class="k">01 · capture</div><div class="t">Honeypot</div><div class="d">Cowrie (SSH / Telnet) and Dionaea (SMB, HTTP, FTP and more) on a single Australian node.</div></div>
       <div class="step"><div class="k">02 · ship</div><div class="t">Ingest</div><div class="d">Log shippers post events to a private Flask endpoint. Every event keeps its timestamp, source IP and country.</div></div>
       <div class="step"><div class="k">03 · map</div><div class="t">ATT&amp;CK</div><div class="d">Detection rules map each event to a technique from the full Enterprise set, loaded live from MITRE's STIX data.</div></div>
       <div class="step"><div class="k">04 · triage</div><div class="t">AI case</div><div class="d">Grouped events go to the Claude API server-side; it returns what happened, why it matters, what to do next.</div></div>
@@ -89,7 +89,7 @@
       <h2>Honesty notes</h2>
       <ul>
         <li>The triage prose is AI-generated. It has <strong>not</strong> been reviewed by an analyst. Treat it as a demo of the workflow, not as verified intelligence.</li>
-        <li>There is one honeypot node, in Melbourne. Attacks are reported by origin country, never by street address; the destination marker is region-level.</li>
+        <li>There is one honeypot node, in Australia. Attacks are reported by origin country, never by street address; the destination marker is region-level and the node's city is not named.</li>
         <li>Every page reads one read-only public feed (<code>/api/public/attacks</code>) so pages cannot disagree. If the feed is unreachable the site falls back to a built-in sample and says <em>sample data</em> in the header. The feed serves stored triage only — no request to this site can trigger a model call.</li>
         <li>Every technique ID links to attack.mitre.org so you can check the mapping yourself.</li>
       </ul>

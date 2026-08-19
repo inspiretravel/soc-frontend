@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Live Attack Map — CyberTriageAI</title>
-<meta name="description" content="Attacks reaching a single honeypot node in Melbourne, Australia, traced to their country of origin.">
+<meta name="description" content="Attacks reaching a single honeypot node in Australia, traced to their country of origin.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -57,7 +57,7 @@
 
     <div style="padding:16px;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(242,84,125,.07);">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-        <span style="font-size:12px;color:rgba(255,255,255,.6);white-space:nowrap;">current 5-minute window</span>
+        <span style="font-size:12px;color:rgba(255,255,255,.6);white-space:nowrap;">current 1-hour window</span>
         <span id="windowClock" class="mono" style="font-size:11px;color:rgba(255,255,255,.45);">--:--</span>
       </div>
       <div style="display:flex;align-items:baseline;gap:8px;margin-top:8px;">
@@ -68,9 +68,9 @@
     </div>
 
     <div style="padding:16px 16px 6px;">
-      <div class="eyebrow">Last hour · per 5 min</div>
-      <div id="buckets" style="display:flex;align-items:flex-end;gap:4px;height:86px;margin-top:14px;" role="group" aria-label="Attempts per five-minute window"></div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.35);margin-top:7px;" class="mono"><span style="white-space:nowrap;">-60 min</span><span>now</span></div>
+      <div class="eyebrow">Last 24 hours · per hour</div>
+      <div id="buckets" style="display:flex;align-items:flex-end;gap:3px;height:86px;margin-top:14px;" role="group" aria-label="Attempts per one-hour window"></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.35);margin-top:7px;" class="mono"><span style="white-space:nowrap;">-24 h</span><span>now</span></div>
     </div>
 
     <div id="detail" style="flex:1;padding:16px;border-top:1px solid rgba(255,255,255,.07);margin-top:10px;" aria-live="polite"></div>
@@ -80,25 +80,26 @@
     <div style="padding:18px 24px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;">
       <div>
         <h1 style="font-family:Archivo,sans-serif;font-size:24px;font-weight:600;letter-spacing:-.4px;margin:0;">Live cyber threat map</h1>
-        <p style="margin:6px 0 0;font-size:14px;color:rgba(255,255,255,.55);">Attacks reaching a single honeypot node in Melbourne, Australia, as they land. Drag the globe to look around.</p>
+        <p style="margin:6px 0 0;font-size:14px;color:rgba(255,255,255,.55);">Attacks reaching a single honeypot node in Australia, as they land. Drag the globe to look around.</p>
       </div>
-      <div style="display:flex;gap:28px;">
+      <div style="display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap;">
         <div>
-          <div class="eyebrow">Total detected · all time</div>
+          <div class="eyebrow" id="totalLabel">Today detected</div>
           <div id="total" class="mono" style="font-size:26px;color:#C4173F;letter-spacing:-.5px;margin-top:4px;"></div>
+          <div id="rangeSel" style="margin-top:8px;"></div>
         </div>
         <div>
           <div class="eyebrow">Target</div>
-          <div style="font-family:Archivo,sans-serif;font-size:20px;font-weight:600;margin-top:6px;color:#FF87A6;">Melbourne, AU</div>
+          <div id="targetLabel" style="font-family:Archivo,sans-serif;font-size:20px;font-weight:600;margin-top:6px;color:#FF87A6;">Australia</div>
         </div>
       </div>
     </div>
     <div id="stage">
-      <canvas id="globe" role="img" aria-label="Rotating globe showing attack arcs from origin countries to the Melbourne honeypot"></canvas>
+      <canvas id="globe" role="img" aria-label="Rotating globe showing attack arcs from origin countries to the Australian honeypot"></canvas>
       <div id="mapFallback">The interactive globe needs the D3 library, which did not load. The origin and technique panels on this page still show the same data.</div>
       <div id="legend" style="position:absolute;left:24px;bottom:20px;display:flex;flex-wrap:wrap;gap:18px;font-size:12px;color:rgba(255,255,255,.5);">
         <span style="display:flex;align-items:center;gap:7px;"><i style="width:9px;height:9px;border-radius:50%;background:#C4173F;display:inline-block;"></i>attack origin</span>
-        <span style="display:flex;align-items:center;gap:7px;"><i style="width:9px;height:9px;border-radius:50%;background:#FF87A6;display:inline-block;"></i>honeypot node · Melbourne, AU</span>
+        <span style="display:flex;align-items:center;gap:7px;"><i style="width:9px;height:9px;border-radius:50%;background:#FF87A6;display:inline-block;"></i>honeypot node · Australia</span>
         <span style="display:flex;align-items:center;gap:7px;"><i style="width:16px;height:2px;background:linear-gradient(90deg,#F2547D,#C4173F);display:inline-block;"></i>live session</span>
       </div>
     </div>
@@ -115,7 +116,7 @@
     </section>
     <section class="panel" style="padding:18px;">
       <div class="eyebrow">Coverage</div>
-      <p style="margin:10px 0 0;font-size:14px;line-height:22px;color:rgba(255,255,255,.6);">One honeypot node, hosted in Melbourne, Australia. We report by country, never by street address — the map shows the nation under attack, not a building.</p>
+      <p style="margin:10px 0 0;font-size:14px;line-height:22px;color:rgba(255,255,255,.6);">One honeypot node, hosted in Australia. We report by country, never by street address — the map shows the nation under attack, not a building.</p>
     </section>
   </aside>
 </div>
@@ -134,13 +135,25 @@ window.Site.ready(function () {
   S.renderHeader("attack-map.html", S.sourceBadge());
   S.renderFooter();
 
-  S.$("total").textContent = S.fig(ST.allTime);
+  // Headline count = the selected range's real event total (default: today). "All" is the old
+  // all-time figure — still available, just no longer the default headline. Numbers come straight
+  // from the server-side range query, never fudged client-side.
+  var RANGE_TITLE = { day: "Today detected", week: "This week detected", month: "This month detected", all: "Total detected · all time" };
+  function renderTotal() {
+    var r = S.currentRange(), stats = S.STATS;
+    var n = (r === "all") ? stats.allTime : stats.total24;
+    S.$("totalLabel").textContent = RANGE_TITLE[r];
+    S.$("total").textContent = (typeof n === "number") ? (n === 0 ? "no data for this period" : fmt(n)) : "no data for this period";
+    S.replace(S.$("rangeSel"), S.rangeSelector(r));
+  }
+  renderTotal();
+  S.onRangeChange(renderTotal);
   // Live: arcs replay the most recent real events (country -> node) and the buckets are real counts.
   // Sample: the feed is simulated and says so.
-  var LIVE_FEED = !!(LIVE && ST.buckets5m && ST.buckets5m.length);
+  var LIVE_FEED = !!(LIVE && ST.buckets30m && ST.buckets30m.length);
   S.replace(S.$("feedTag"), LIVE_FEED ? S.demoTag("replay · last " + ((ST.recent || []).length) + " events") : S.demoTag("simulated feed", "Sample data — the feed is simulated until the live API answers"));
 
-  // T1.3: one destination only — the single Melbourne node (region-level coordinate).
+  // T1.3: one destination only — the single Australian node (region-level coordinate; no city named).
   var TARGET = { name: D.nodeShort, coord: D.nodeCoord };
   var ORIGINS = D.origins.filter(function (o) { return o.coord; });
   // Technique share on the map = the top four queue categories, weighted by their real 24h counts.
@@ -166,27 +179,38 @@ window.Site.ready(function () {
   }));
 
   /* ---- simulated feed (demo only; replaced by /api/public/attacks in Deploy B) ---- */
+  // Display aggregation only — the honeypot still ships every 5 minutes; we just chart it per hour.
+  var BUCKET_MS = 60 * 60000, NBUCKETS = 24;
   var WINDOW_MS = 9000, clock = new Date(), buckets = [], bucket = null, selected = -1, windowStart = performance.now();
   function pick(list) { var t = list.reduce(function (s, o) { return s + o.w; }, 0), r = Math.random() * t; for (var i = 0; i < list.length; i++) { r -= list[i].w; if (r <= 0) return list[i]; } return list[0]; }
-  function newBucket() { clock = new Date(clock.getTime() + 5 * 60000); return { end: new Date(clock), attempts: 0, countries: {}, techs: {}, sev: 2 }; }
+  function newBucket() { clock = new Date(clock.getTime() + BUCKET_MS); return { end: new Date(clock), attempts: 0, countries: {}, techs: {}, sev: 2 }; }
   function fmtTime(d) { return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
-  function windowLabel(b) { return fmtTime(new Date(b.end.getTime() - 5 * 60000)) + "–" + fmtTime(b.end); }
+  function windowLabel(b) { return fmtTime(new Date(b.end.getTime() - BUCKET_MS)) + "–" + fmtTime(b.end); }
   function seedLive() {
-    // Real 5-minute buckets from the feed (last hour). Per-bucket country/technique detail is not
-    // in the payload, so the detail panel shows counts only for live buckets.
-    var bs = ST.buckets5m.slice(-13);
-    buckets = bs.slice(0, -1).map(function (b) {
-      var end = new Date(Date.parse(b.start) + 5 * 60000);
+    // Real counts from the feed, aggregated to hourly bars for readability. buckets_30m covers the
+    // last 24h in 30-minute steps; two consecutive steps = one hour. Per-bucket country/technique
+    // detail is not in the payload, so the detail panel shows counts only for live buckets.
+    var halves = ST.buckets30m, hours = [];
+    var offset = halves.length % 2;                 // align pairs so the LAST pair is the current hour
+    for (var i = offset; i + 1 < halves.length; i += 2) {
+      hours.push({ start: halves[i].start, n: (halves[i].n || 0) + (halves[i + 1].n || 0) });
+    }
+    if (halves.length && (halves.length - offset) % 2 === 1) {   // trailing lone half-hour = current, still-filling hour
+      var last = halves[halves.length - 1]; hours.push({ start: last.start, n: last.n || 0 });
+    }
+    hours = hours.slice(-(NBUCKETS + 1));
+    buckets = hours.slice(0, -1).map(function (b) {
+      var end = new Date(Date.parse(b.start) + BUCKET_MS);
       return { end: end, attempts: b.n, countries: {}, techs: {}, sev: b.n > 0 ? 1 : 2, live: true };
     });
-    var cur = bs[bs.length - 1];
-    clock = new Date(Date.parse(cur.start) + 5 * 60000);
+    var cur = hours[hours.length - 1];
+    clock = new Date(Date.parse(cur.start) + BUCKET_MS);
     bucket = { end: new Date(clock), attempts: cur.n, countries: {}, techs: {}, sev: 2, live: true };
     S.$("livecount").textContent = fmt(bucket.attempts);
   }
   function seed() {
-    clock = new Date(clock.getTime() - 12 * 5 * 60000);
-    for (var i = 0; i < 11; i++) {
+    clock = new Date(clock.getTime() - NBUCKETS * BUCKET_MS);
+    for (var i = 0; i < NBUCKETS - 1; i++) {
       var b = newBucket(), n = 6 + Math.floor(Math.random() * 10);
       for (var j = 0; j < n; j++) {
         var o = pick(ORIGINS), t = pick(TECHS), c = [50, 58, 100, 116, 150, 288][Math.floor(Math.random() * 6)];
@@ -206,7 +230,7 @@ window.Site.ready(function () {
     S.$("livecount").textContent = fmt(bucket.attempts);
   }
   function closeWindow() {
-    buckets.push(bucket); if (buckets.length > 12) buckets.shift();
+    buckets.push(bucket); if (buckets.length > NBUCKETS) buckets.shift();
     bucket = newBucket(); windowStart = performance.now();
     if (selected >= 0) selected = Math.max(0, selected - 1);
     S.$("livecount").textContent = "0"; renderBuckets();
@@ -232,7 +256,7 @@ window.Site.ready(function () {
           S.demoTag("live")),
         el("div", { style: "display:flex;align-items:baseline;gap:8px;margin-top:10px;" },
           el("span", { className: "mono", style: "font-size:24px;color:#fff;letter-spacing:-.6px;" }, fmt(b.attempts)),
-          el("span", { style: "font-size:12px;color:rgba(255,255,255,.5);" }, "events in this 5-minute window")),
+          el("span", { style: "font-size:12px;color:rgba(255,255,255,.5);" }, "events in this 1-hour window")),
         el("div", { style: "margin-top:14px;font-size:12px;line-height:20px;color:rgba(255,255,255,.5);" }, "Per-window country and technique breakdown is not part of the public feed; the panels on the right give the 24-hour view."));
       return;
     }
@@ -361,8 +385,8 @@ window.Site.ready(function () {
   if (!RM) setInterval(spawn, 2100);
   if (!RM && !LIVE_FEED) setInterval(closeWindow, WINDOW_MS);
   if (LIVE_FEED) {
-    // progress = position inside the current real 5-minute window; refresh the data every ~5 min
-    setInterval(function () { S.$("windowProgress").style.width = (((Date.now() / 1000) % 300) / 300 * 100) + "%"; }, 1000);
+    // progress = position inside the current real 1-hour window
+    setInterval(function () { S.$("windowProgress").style.width = (((Date.now() / 1000) % 3600) / 3600 * 100) + "%"; }, 1000);
   } else {
     setInterval(function () { S.$("windowProgress").style.width = Math.min(100, (performance.now() - windowStart) / WINDOW_MS * 100) + "%"; }, 400);
   }

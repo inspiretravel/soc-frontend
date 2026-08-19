@@ -14,8 +14,8 @@
  */
 window.DATA = /* DATA_BEGIN */ {
   "brand": "CyberTriageAI",
-  "node": "a single honeypot node in Melbourne, Australia",
-  "nodeShort": "Melbourne, AU",
+  "node": "a single honeypot node in Australia",
+  "nodeShort": "Australia",
   "nodeCoord": [144.9631, -37.8136],
   "mitreTechniqueCount": 697,
 

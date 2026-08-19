@@ -1,7 +1,7 @@
 # CyberTriageAI — public front end
 
 Static, read-only front end for [CyberTriageAI](https://github.com/inspiretravel/soc-dashboard): real attacks on a
-single Melbourne honeypot, auto-triaged into MITRE ATT&CK-mapped cases. Portfolio project for a SOC L1 / Security
+single Australian honeypot, auto-triaged into MITRE ATT&CK-mapped cases. Portfolio project for a SOC L1 / Security
 Analyst job search in Australia.
 
 **This repo holds no secrets and never calls the Claude API.** It renders finished triage output only.
@@ -12,7 +12,7 @@ Analyst job search in Australia.
 |---|---|
 | `index.html` | Landing — pain → solution, live map, how it works, statistics, inside the tool, about teaser |
 | `dashboard.html` | Priority queue (last 24h, grouped by ATT&CK technique) |
-| `attack-map.html` | D3 globe: origin countries → Melbourne node |
+| `attack-map.html` | D3 globe: origin countries → Australian node |
 | `cases.html` | AI-written cases: what happened · why it matters · what to do next |
 | `reference.html` | Same evidence mapped to ATT&CK, Essential Eight, NIST CSF 2.0, ISO/IEC 27001:2022 |
 | `about.html` | Architecture, methodology, tech stack, honesty notes |
@@ -28,7 +28,7 @@ Analyst job search in Australia.
 - All data is rendered through `textContent` / `createElement` — never `innerHTML` — so attacker-derived text
   (IPs, payloads, technique names) is escaped by construction.
 - Every MITRE technique badge links to `attack.mitre.org`.
-- One honeypot node, Melbourne, region-level marker; no hostnames or internal IPs.
+- One honeypot node, Australia (city never named), region-level marker; no hostnames or internal IPs.
 - Footer on every page: *AI-generated triage — portfolio demo. Human review required before action.*
 
 ## Live data
