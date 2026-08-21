@@ -1,4 +1,4 @@
-/* CyberTriageAI — runtime configuration (no secrets here, ever).
+/* iPattern Threat Detector — runtime configuration (no secrets here, ever).
  * apiUrl: the read-only public feed. Same-origin path works when the static site
  * is served by the same nginx as the Flask app (Option B). For Cloudflare Pages
  * (Option A) set the full https://api.<domain>/api/public/attacks URL — PS confirms.

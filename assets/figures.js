@@ -1,4 +1,4 @@
-/* CyberTriageAI — canonical top-level figures.
+/* iPattern Threat Detector — canonical top-level figures.
  *
  * These two numbers cannot be derived from the tables in data.js, so PS
  * supplies them from the live database. While a value is null the site shows

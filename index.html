@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CyberTriageAI — real attacks, triaged into decisions</title>
-<meta name="description" content="CyberTriageAI captures real internet attacks on an Australian honeypot and auto-triages each one into a prioritised, MITRE ATT&CK-mapped ticket. Portfolio project by a SOC analyst candidate in Australia.">
+<title>iPattern Threat Detector — real attacks, triaged into decisions</title>
+<meta name="description" content="iPattern Threat Detector watches real internet attacks land on an Australian honeypot and turns each one into a ranked, evidence-linked, MITRE ATT&CK-mapped case.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -176,7 +176,7 @@
     <div class="hero-copy">
       <div class="live-badge"><span class="dot"></span>Live honeypot · Australia · recording right now</div>
       <h1 id="h1"><span id="typedA"></span><span class="b" id="typedB"></span><span class="caret" aria-hidden="true"></span></h1>
-      <p class="lede"><b>The problem:</b> SOC teams drown in alert volume, and junior analysts burn hours on repetitive first-pass triage of attacks that all look the same. <b>What this does:</b> CyberTriageAI captures real internet attacks on a single honeypot node in Australia and auto-triages each one into a structured, prioritised, MITRE ATT&amp;CK-mapped ticket — so the analyst starts from a decision, not a raw log line.</p>
+      <p class="lede"><b>The problem:</b> Every security team drowns in alerts — most of the day goes to sorting noise from real threats, not stopping them. <b>The fix:</b> iPattern Threat Detector watches real attacks the moment they land and turns each into a ranked, evidence-linked case with recommended next steps — before a human opens the ticket. Less time stitching context together. More time containing real risk.</p>
       <div class="hero-ctas">
         <a class="cta" href="dashboard.html">View the live threat feed
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h13M12.5 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
@@ -213,7 +213,7 @@
           <span class="eyebrow-pink">Live attack map</span>
           <h2 style="font-size:40px;margin-top:12px;">This is happening to Australia right now.</h2>
         </div>
-        <p style="max-width:420px;margin:0;font-size:15px;line-height:24px;color:rgba(255,255,255,.55);">Every arc is a real attack pattern reaching our honeypot in Australia. Drag the globe to look around — reported by country, never by address.</p>
+        <p style="max-width:420px;margin:0;font-size:15px;line-height:24px;color:rgba(255,255,255,.55);">Every arc is a real attack pattern reaching our honeypot in Australia. Drag the globe to look around — reported by country, never by street address or personal identifiers.</p>
       </div>
       <div class="map-frame">
         <iframe data-frame="1" src="attack-map.html" title="Live attack map" loading="lazy"></iframe>
@@ -238,8 +238,8 @@
 <section id="numbers" class="band">
   <div class="narrow" data-reveal>
     <span class="eyebrow-pink">Statistics</span>
-    <h2 style="max-width:620px;">One machine, one month, and a very busy internet.</h2>
-    <p style="margin:16px 0 0;font-size:17px;line-height:27px;color:rgba(255,255,255,.6);max-width:620px;">Nobody has ever heard of this server. It has no users, no data, no reason to exist. Here is what still happened to it.</p>
+    <h2 style="max-width:620px;">One machine, one month, and a lot less busywork.</h2>
+    <p style="margin:16px 0 0;font-size:17px;line-height:27px;color:rgba(255,255,255,.6);max-width:620px;">Nobody has ever heard of this server. It has no users, no data, no reason to exist — and no customer or personal data ever passes through it. Here is what still happened to it.</p>
     <div class="cols4" style="margin-top:52px;gap:20px;">
       <div class="stat hot"><div class="v" id="stat1">0</div><div class="l">attacks recorded against a single honeypot, all time</div></div>
       <div class="stat"><div class="v pink" id="stat2">0</div><div class="l">MITRE ATT&amp;CK Enterprise techniques we can name on sight</div></div>
@@ -276,13 +276,13 @@
 
 <section id="about-teaser" class="band">
   <div class="narrow" data-reveal>
-    <span class="eyebrow-pink">About the builder</span>
-    <h2 style="max-width:720px;">Ten years of enterprise ticket triage, pointed at security.</h2>
-    <p style="margin:16px 0 0;font-size:17px;line-height:27px;color:rgba(255,255,255,.6);max-width:680px;">10 years of SAP ERP incident ticketing — priority triage, SLA management, escalation under pressure. Those workflows map directly to SOC work. This project demonstrates MITRE ATT&amp;CK knowledge applied to real defensive telemetry, not just reading logs.</p>
+    <span class="eyebrow-pink">Why this exists</span>
+    <h2 style="max-width:720px;">Built to prove a point: triage doesn't have to be manual.</h2>
+    <p style="margin:16px 0 0;font-size:17px;line-height:27px;color:rgba(255,255,255,.6);max-width:680px;">A decade of enterprise incident-ticketing experience — priority triage, SLA pressure, escalation calls — went into this build. iPattern Threat Detector is proof that the same discipline applies to security: raw attack data in, a ranked, explained, framework-mapped decision out, with no human needed for the first pass.</p>
     <div class="about-grid">
-      <div class="card"><h3>What it does</h3><ul><li>Real honeypot telemetry (Cowrie SSH/Telnet, Dionaea multi-protocol)</li><li>MITRE ATT&amp;CK mapping — the full Enterprise technique set</li><li>ACSC Essential Eight, NIST CSF 2.0 and ISO/IEC 27001:2022 linkage</li><li>Priority queue, written cases, framework-mapped assessment</li></ul></div>
-      <div class="card"><h3>Tech stack</h3><ul><li>Python 3.11 · Flask 3.0 · SQLite</li><li>MITRE ATT&amp;CK STIX (live from MITRE's GitHub)</li><li>Claude API for triage prose — server-side only, keys never in the browser</li><li>This front end: static HTML/CSS/JS on Cloudflare Pages · D3 globe</li></ul></div>
-      <div class="card"><h3>Key features</h3><ul><li>Every case sentence traceable to grouped raw events</li><li>Case management with analyst notes (backend)</li><li>Server-side credential proxy — the public site holds no secrets</li><li>Read-only public API; attacker-derived text always escaped</li></ul></div>
+      <div class="card"><h3>What it does</h3><ul><li>Watches real attacks hit a decoy system in real time</li><li>Maps every technique to the industry-standard MITRE ATT&amp;CK framework</li><li>Cross-checks findings against four major security frameworks — automatically</li><li>Turns raw logs into a ranked queue, plain-English case notes, and a ready-made assessment</li></ul></div>
+      <div class="card"><h3>Built for trust</h3><ul><li>All credentials and API keys stay server-side — nothing sensitive ever reaches the browser</li><li>Threat intelligence pulled live from the industry's official database, not typed in by hand</li><li>Every attacker-submitted input is sanitised before display — nothing an attacker sends can run on this page</li><li>A fully static, read-only public front end — no path from a visitor to this system's infrastructure</li></ul></div>
+      <div class="card"><h3>Key features</h3><ul><li>Every finding traces back to the real events behind it — nothing invented</li><li>Full case history, with room for analyst notes on every finding</li><li>Live public data feed, always available — and every technique links to the official reference so you can verify it yourself</li></ul></div>
     </div>
     <p style="margin:28px 0 0;"><a class="cta-link" href="about.html">Read the full methodology →</a></p>
   </div>
@@ -416,7 +416,7 @@ window.Site.ready(function () {
   function sync() {
     var s = SHOTS[tab];
     if (mounted.main !== tab) { mounted.main = tab; S.replace(S.$("slotMain"), frame(tab, false)); }
-    S.$("shotUrl").textContent = "cybertriageai · " + s.live;
+    S.$("shotUrl").textContent = "ipattern · " + s.title.toLowerCase();
     S.$("shotCaption").textContent = s.caption;
     S.$("zoomTitle").textContent = s.title;
     var z = S.$("zoom");

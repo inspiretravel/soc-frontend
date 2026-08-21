@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>About / How it works — CyberTriageAI</title>
-<meta name="description" content="Architecture, methodology and honesty notes for CyberTriageAI — a portfolio SOC triage project built on a real Australian honeypot.">
+<title>About / How it works — iPattern Threat Detector</title>
+<meta name="description" content="Architecture, methodology and honesty notes for iPattern Threat Detector — a live SOC triage proof-of-concept built on a real Australian honeypot.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -36,12 +36,12 @@
 <main>
   <span class="eyebrow" style="color:#F2547D;">About · How it works</span>
   <h1 style="margin-top:12px;">Real attacks in. Decisions out.</h1>
-  <p class="lede">CyberTriageAI is a portfolio project built for a SOC L1 / Security Analyst job search in Australia. It runs one honeypot node in Australia, keeps every attempt made against it, and has an AI write each day's activity up as a prioritised, MITRE ATT&amp;CK-mapped case — the first-pass triage a junior analyst would otherwise do by hand.</p>
+  <p class="lede">iPattern Threat Detector is a live proof-of-concept: a system that watches real attacks hit a decoy machine in Australia, and has AI write up each day's activity as a prioritised, framework-mapped case — the first-pass triage a security analyst would otherwise do by hand.</p>
 
   <section class="panel box" style="margin-top:32px;">
     <h2>Pipeline</h2>
     <div class="flow">
-      <div class="step"><div class="k">01 · capture</div><div class="t">Honeypot</div><div class="d">Cowrie (SSH / Telnet) and Dionaea (SMB, HTTP, FTP and more) on a single Australian node.</div></div>
+      <div class="step"><div class="k">01 · capture</div><div class="t">Honeypot</div><div class="d">A real, exposed machine that mimics common attack surfaces — remote login, file sharing, web traffic — on a single Australian server.</div></div>
       <div class="step"><div class="k">02 · ship</div><div class="t">Ingest</div><div class="d">Log shippers post events to a private Flask endpoint. Every event keeps its timestamp, source IP and country.</div></div>
       <div class="step"><div class="k">03 · map</div><div class="t">ATT&amp;CK</div><div class="d">Detection rules map each event to a technique from the full Enterprise set, loaded live from MITRE's STIX data.</div></div>
       <div class="step"><div class="k">04 · triage</div><div class="t">AI case</div><div class="d">Grouped events go to the Claude API server-side; it returns what happened, why it matters, what to do next.</div></div>
@@ -59,17 +59,16 @@
         <dt>AI</dt><dd>Anthropic Claude API, server-side only</dd>
         <dt>Honeypot</dt><dd>Cowrie · Dionaea · GCP VM · systemd · nginx</dd>
         <dt>Front end</dt><dd>Static HTML / CSS / JS · D3 (globe) · Cloudflare Pages</dd>
-        <dt>Source</dt><dd><a href="https://github.com/inspiretravel/soc-dashboard" target="_blank" rel="noopener noreferrer">github.com/inspiretravel/soc-dashboard ↗</a></dd>
       </dl>
     </section>
 
     <section class="panel box">
-      <h2>About the builder</h2>
-      <p>10 years of enterprise SAP ERP incident ticketing — priority triage, SLA management, and escalation under pressure. Those workflows map directly to SOC work: same volume problem, same need to turn a queue into decisions.</p>
-      <p>I built this to demonstrate MITRE ATT&amp;CK knowledge applied to real defensive telemetry — not just reading logs, but producing an actionable, framework-mapped write-up an organisation could act on.</p>
+      <h2>Why this exists</h2>
+      <p>Built from real SOC triage pain — too many alerts, too little time, and too much repetitive reporting — plus a decade of experience turning high-volume operational queues into fast, defensible decisions.</p>
+      <p>The goal: prove the first pass of threat triage doesn't need a human to start it. AI can read the evidence, apply the right framework, and hand over a decision a person can act on in seconds.</p>
       <dl class="kv" style="margin-top:12px;">
-        <dt>Target role</dt><dd>SOC L1 / Security Analyst (AU)</dd>
-        <dt>Location</dt><dd>Melbourne, Australia</dd>
+        <dt>Focus</dt><dd>AI-driven security operations</dd>
+        <dt>Based in</dt><dd>Australia</dd>
       </dl>
     </section>
 

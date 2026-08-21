@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Framework mapping — CyberTriageAI</title>
+<title>Framework mapping — iPattern Threat Detector</title>
 <meta name="description" content="The same honeypot evidence expressed against MITRE ATT&CK, the ACSC Essential Eight, NIST CSF 2.0 and ISO/IEC 27001:2022.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -117,9 +117,12 @@ window.Site.ready(function () {
       var worst = 0; ST.queue.forEach(function (q) { if (evidTids.indexOf(q.id) >= 0 || evidTids.indexOf("CRED") >= 0 && (q.id === "T1110" || q.id === "T1078")) worst = Math.max(worst, S.SEV_ORDER.length - S.SEV_ORDER.indexOf(q.sev)); });
       var critN = ST.queue.filter(function (q) { return q.sev === "CRITICAL"; }).length, highN = ST.queue.filter(function (q) { return q.sev === "HIGH"; }).length;
       var rating = critN ? "HIGH" : highN ? "MEDIUM" : ST.queue.length ? "LOW" : "NONE";
-      var ratingWhy = critN ? critN + " technique" + (critN === 1 ? "" : "s") + " observed at CRITICAL severity in " + RANGE_WORDS[range] + "." :
-                      highN ? highN + " technique" + (highN === 1 ? "" : "s") + " observed at HIGH severity in " + RANGE_WORDS[range] + "; nothing critical." :
-                      ST.queue.length ? "Only low/medium-severity activity in " + RANGE_WORDS[range] + "." : "No honeypot events in " + RANGE_WORDS[range] + ".";
+      // The closing call to action only makes sense when there is something to act on;
+      // an empty range keeps the bare "no events" sentence.
+      var actionLine = " Review recommended containment and hardening actions.";
+      var ratingWhy = critN ? critN + " technique" + (critN === 1 ? "" : "s") + " observed at CRITICAL severity in " + RANGE_WORDS[range] + "." + actionLine :
+                      highN ? highN + " technique" + (highN === 1 ? "" : "s") + " observed at HIGH severity in " + RANGE_WORDS[range] + "; nothing critical." + actionLine :
+                      ST.queue.length ? "Only low/medium-severity activity in " + RANGE_WORDS[range] + "." + actionLine : "No honeypot events in " + RANGE_WORDS[range] + ".";
       var max = Math.max.apply(null, controls.map(function (c) { return c.n; }).concat([1]));
       controls.forEach(function (c) { c.w = Math.round(c.n / max * 100); });
       var stats;
@@ -194,7 +197,7 @@ window.Site.ready(function () {
             f.controls.filter(function (c) { return c.status === "EVIDENCED"; }).length + " evidenced · " + gaps.length + " no evidence in this " + winLabel)),
         el("p", { style: "margin-top:10px;" }, f.ratingWhy)),
       el("hr"),
-      el("section", { style: "animation-delay:360ms;" }, el("h4", null, "Cannot be answered from this evidence"),
+      el("section", { style: "animation-delay:360ms;" }, el("h4", null, "Not supported by current evidence"),
         el("p", null, gaps.length ? gaps.map(function (g) { return (f.key === "e8" ? "" : g.id + " ") + g.name; }).join(" · ") : "None — every cited control has supporting events.")),
       el("hr"),
       el("p", { className: "disclaimer" }, S.DISCLAIMER));

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Case report — CyberTriageAI</title>
+<title>Case report — iPattern Threat Detector</title>
 <meta name="description" content="AI-generated honeypot incident cases: what happened, why it matters, what to do next — every sentence traceable to the events behind it.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -135,7 +135,7 @@ window.Site.ready(function () {
         el("div", { className: "unfold" },
           el("div", { style: "display:flex;flex-direction:column;gap:26px;" },
             c.happened === null ? el("div", null, el("h3", null, "Not yet triaged"),
-                el("p", null, "The AI summary for this case has not been generated. Summaries are written from the analyst console and served here exactly as stored — this public site never calls the model.")) : [
+                el("p", null, "The AI summary for this case has not been generated. Summaries are written from the analyst console and served here exactly as stored — this public site never calls the model. Nothing here is auto-executed: this is decision support, not autopilot.")) : [
               el("div", null, el("h3", null, "What happened"), el("p", null, c.happened)),
               el("div", { style: "height:1px;background:rgba(255,255,255,.07);" }),
               el("div", null, el("h3", null, "Why it matters"), el("p", null, c.matters)),

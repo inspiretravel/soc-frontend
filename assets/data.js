@@ -1,4 +1,4 @@
-/* CyberTriageAI — single source of truth for all displayed data.
+/* iPattern Threat Detector — single source of truth for all displayed data.
  *
  * Every page reads from window.DATA. Derived numbers (24h totals, severity
  * mix, per-case findings/IP/technique counts, tactic coverage) are COMPUTED
@@ -13,7 +13,7 @@
  * no trailing commas) so the Python checker can parse it.
  */
 window.DATA = /* DATA_BEGIN */ {
-  "brand": "CyberTriageAI",
+  "brand": "iPattern Threat Detector",
   "node": "a single honeypot node in Australia",
   "nodeShort": "Australia",
   "nodeCoord": [144.9631, -37.8136],

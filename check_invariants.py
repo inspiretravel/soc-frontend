@@ -50,7 +50,7 @@ if len(sys.argv) >= 3 and sys.argv[1] == "--live":
         # Cloudflare answers 403 to the default "Python-urllib/x.y" User-Agent, so send a real one.
         # Verified 2026-08-17: Python-urllib -> 403, any other UA -> reaches the origin.
         req = urllib.request.Request(src, headers={
-            "User-Agent": "CyberTriageAI-invariant-checker/1.0",
+            "User-Agent": "iPattern-invariant-checker/1.0",
             "Accept": "application/json",
         })
         try:

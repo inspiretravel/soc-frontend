@@ -1,4 +1,4 @@
-/* CyberTriageAI — shared helpers. No framework; DOM is built with createElement + textContent only.
+/* iPattern Threat Detector — shared helpers. No framework; DOM is built with createElement + textContent only.
  *
  * Every piece of data on the site (IPs, country names, technique names, case
  * prose) is written into the page through `el()` / `textContent`, so a value
@@ -342,7 +342,7 @@
     ["dashboard.html", "Dashboard"], ["attack-map.html", "Attack Map"], ["cases.html", "Cases"],
     ["reference.html", "Reference"], ["about.html", "About"]
   ];
-  var DISCLAIMER = "AI-generated triage — portfolio demo. Human review required before action.";
+  var DISCLAIMER = "AI-generated draft — human review required before action.";
 
   function logo(size) {
     var s = size || 28;
@@ -353,9 +353,9 @@
     var p2 = document.createElementNS("http://www.w3.org/2000/svg", "path");
     p2.setAttribute("d", "M8.6 12.2l2.3 2.3 4.5-4.6"); p2.setAttribute("stroke", "#6A2350"); p2.setAttribute("stroke-width", "2"); p2.setAttribute("stroke-linecap", "round"); p2.setAttribute("stroke-linejoin", "round");
     svg.appendChild(p1); svg.appendChild(p2);
-    return el("a", { href: "index.html", className: "brand", "aria-label": "CyberTriageAI home" },
+    return el("a", { href: "index.html", className: "brand", "aria-label": "iPattern Threat Detector home" },
       el("span", { className: "brand-mark", style: "width:" + s + "px;height:" + s + "px;" }, svg),
-      el("span", { className: "brand-name" }, "CyberTriage", el("span", { style: "color:#F2547D;" }, "AI")));
+      el("span", { className: "brand-name" }, "iPattern ", el("span", { style: "color:#F2547D;" }, "Threat Detector")));
   }
 
   function renderHeader(active, statusNode) {
@@ -370,7 +370,7 @@
     var host = $("site-footer"); if (!host) return;
     replace(host,
       el("div", { className: "foot-inner" },
-        el("div", { className: "foot-brand" }, logo(24), el("span", { className: "foot-tag" }, "Real honeypot. Real attacks. Plain English.")),
+        el("div", { className: "foot-brand" }, logo(24), el("span", { className: "foot-tag" }, "Real attacks. Real triage. Plain English.")),
         el("nav", { className: "foot-links", "aria-label": "Footer" }, NAV.map(function (n) { return el("a", { href: n[0] }, n[1]); }),
           el("span", { className: "foot-copy" }, "© 2026")),
         el("p", { className: "disclaimer", role: "note" }, DISCLAIMER)));
