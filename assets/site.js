@@ -198,7 +198,8 @@
     };
     var f = p.figures || {};
     var figs = { allTimeTotal: f.all_time_total, uniqueIps24h: f.unique_ips_24h, critical24: f.critical_24h,
-      openCases: f.open_cases, aiWrittenCases: f.ai_written_cases_7d, generatedAt: p.generated_at };
+      openCases: f.open_cases, aiWrittenCases: f.ai_written_cases_7d, generatedAt: p.generated_at,
+      newestEventAt: f.newest_event_at || null };
     return { data: out, figures: figs };
   }
 
@@ -269,8 +270,32 @@
       }));
   }
 
+  // How old the newest honeypot event is, in minutes — null when unknown.
+  // "refreshed 20s ago" only means the API answered; it says nothing about whether
+  // the honeypot is still feeding it. Two multi-day stalls served perfectly fresh
+  // responses full of stale data, so freshness of the DATA is tracked separately.
+  var STALE_AFTER_MIN = 60;
+  function dataAgeMinutes() {
+    var iso = F.newestEventAt;
+    if (!iso) return null;
+    var t = Date.parse(iso);
+    if (isNaN(t)) return null;
+    return Math.max(0, (Date.now() - t) / 60000);
+  }
+  function isStale() { var m = dataAgeMinutes(); return m !== null && m > STALE_AFTER_MIN; }
+
   function sourceBadge() {
     if (SOURCE.kind === "live") {
+      // Live API, but no new honeypot data for a while — say so plainly rather than
+      // showing a green "live" pill over numbers that stopped moving hours ago.
+      if (isStale()) {
+        var stalePill = el("span", { className: "pill",
+          title: "The API is reachable and these numbers are accurate, but no new honeypot event has arrived since " + F.newestEventAt + ". The capture pipeline may have stalled." },
+          el("span", { className: "dot", style: "background:#FFA85C;box-shadow:0 0 9px #FFA85C;" }),
+          "feed stale · no data for " + timeAgo(F.newestEventAt).replace(" ago", ""));
+        stalePill.setAttribute("data-source-badge", "");
+        return stalePill;
+      }
       var pill = livePill("live · " + (SOURCE.generatedAt ? "refreshed " + timeAgo(SOURCE.generatedAt) : "just now"), "#5FE3B0");
       pill.setAttribute("data-source-badge", "");
       return pill;
@@ -280,13 +305,23 @@
   }
   function isLive() { return SOURCE.kind === "live"; }
 
-  // Keep the "refreshed Ns ago" pill text current without a page reload.
+  // Keep the pill text current without a page reload. If the data goes stale while
+  // the page is open (a stall starting mid-session), the label flips to the warning
+  // on its own rather than sitting on a reassuring "live" until someone reloads.
   setInterval(function () {
     if (SOURCE.kind !== "live") return;
+    var stale = isStale();
+    var label = stale
+      ? "feed stale · no data for " + timeAgo(F.newestEventAt).replace(" ago", "")
+      : "live · " + (SOURCE.generatedAt ? "refreshed " + timeAgo(SOURCE.generatedAt) : "just now");
     document.querySelectorAll("[data-source-badge]").forEach(function (pill) {
-      var label = "live · " + (SOURCE.generatedAt ? "refreshed " + timeAgo(SOURCE.generatedAt) : "just now");
       var textNode = pill.lastChild;
       if (textNode && textNode.nodeType === 3) textNode.textContent = label;
+      var dot = pill.firstChild;
+      if (dot && dot.style) {
+        var c = stale ? "#FFA85C" : "#5FE3B0";
+        dot.style.background = c; dot.style.boxShadow = "0 0 9px " + c;
+      }
     });
   }, 15000);
 
