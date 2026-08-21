@@ -1,8 +1,7 @@
-# CyberTriageAI — public front end
+# iPattern Threat Detector — public front end
 
-Static, read-only front end for [CyberTriageAI](https://github.com/inspiretravel/soc-dashboard): real attacks on a
-single Australian honeypot, auto-triaged into MITRE ATT&CK-mapped cases. Portfolio project for a SOC L1 / Security
-Analyst job search in Australia.
+Static, read-only front end for iPattern Threat Detector: real attacks on a single Australian honeypot,
+auto-triaged into MITRE ATT&CK-mapped cases.
 
 **This repo holds no secrets and never calls the Claude API.** It renders finished triage output only.
 
@@ -29,7 +28,7 @@ Analyst job search in Australia.
   (IPs, payloads, technique names) is escaped by construction.
 - Every MITRE technique badge links to `attack.mitre.org`.
 - One honeypot node, Australia (city never named), region-level marker; no hostnames or internal IPs.
-- Footer on every page: *AI-generated triage — portfolio demo. Human review required before action.*
+- Footer on every page: *AI-generated draft — human review required before action.*
 
 ## Live data
 

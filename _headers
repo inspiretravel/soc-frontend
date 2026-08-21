@@ -1,4 +1,4 @@
-# Cloudflare Pages response headers for the CyberTriageAI static front end.
+# Cloudflare Pages response headers for the iPattern Threat Detector static front end.
 # Matches the nginx CSP deployed in Phase 3 (Option B, same-origin with the API — see
 # docs/PHASE3_DEPLOY.md). d3, topojson and the world-atlas topology are vendored under
 # assets/ (see docs/PHASE3_DEPLOY.md "Self-hosted map dependencies"), so no third-party
