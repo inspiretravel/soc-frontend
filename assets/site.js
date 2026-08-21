@@ -219,7 +219,7 @@
    * onRangeChange — it does NOT fall back to sample data on a failed range
    * switch (only the very first load does that), so a transient network blip
    * after the page already has live data just leaves the last good view up. */
-  var CURRENT_RANGE = "day", rangeListeners = [], rangeBusy = false;
+  var CURRENT_RANGE = "day", rangeListeners = [], rangeBusy = false, initialRetried = false;
   function fetchRange(range, isInitial) {
     var cfg = window.CONFIG || {}, base = cfg.apiUrl;
     if (!base || typeof fetch !== "function") {
@@ -245,8 +245,20 @@
       })
       .catch(function (e) {
         clearTimeout(timer);
-        if (isInitial) finish("sample", String(e && e.message || e));
-        else if (window.console) console.error("range switch failed:", e);
+        if (!isInitial) { if (window.console) console.error("range switch failed:", e); return; }
+        // The landing page fires this request while the browser is also pulling the
+        // globe libraries, the world atlas and an iframe — enough contention to blow
+        // a short timeout on a slow connection. Falling back on the FIRST failure
+        // meant the page showed built-in sample figures while the very same page's
+        // map iframe, requested moments later, got real data: two contradictory
+        // numbers on one screen. Retry once before giving up.
+        if (!initialRetried) {
+          initialRetried = true;
+          if (window.console) console.warn("live feed attempt 1 failed (" + (e && e.message || e) + ") — retrying once");
+          setTimeout(function () { fetchRange(range, true); }, 900);
+          return;
+        }
+        finish("sample", String(e && e.message || e));
       });
   }
   fetchRange("day", true);   // initial load — identical request/behaviour to the original fetchLive()

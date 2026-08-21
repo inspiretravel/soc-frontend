@@ -339,7 +339,14 @@ window.Site.ready(function () {
     }, 400);
   }
 
+  // LIVE_DATA gates every headline figure on this page. The built-in sample is a
+  // demo scenario whose magnitudes bear no relation to the real honeypot, so if the
+  // feed is unreachable these render as "—" rather than as confident, wrong numbers.
+  // (The "sample data" badge in the header already says which source is in use.)
+  var LIVE_DATA = S.isLive();
+
   function countTo(node, target, dur) {
+    if (!LIVE_DATA) { node.textContent = "—"; node.classList.add("ps-fill"); return; }
     if (!S.isFilled(target)) { node.textContent = S.fig(target); node.classList.add("ps-fill"); return; }
     if (RM) { node.textContent = fmt(target); return; }
     var start = performance.now();
@@ -352,8 +359,13 @@ window.Site.ready(function () {
   setTimeout(function () { countTo(S.$("attacksLabel"), ST.total24, 2200); }, RM ? 200 : 1200);
 
   /* ---- copy that carries numbers is derived from DATA ---- */
-  S.$("howTriage").textContent = fmt(ST.total24) + " near-identical events in the last 24 hours become " + ST.categories + " ranked attack categories, each tagged with the ATT&CK technique behind it and a severity you can defend.";
-  S.$("stat3l").textContent = "raw events in the last 24 hours, folded into " + ST.categories + " ranked attack categories";
+  // Same rule as the counters: prose that quotes a figure must not quote a sample one.
+  S.$("howTriage").textContent = LIVE_DATA
+    ? fmt(ST.total24) + " near-identical events in the last 24 hours become " + ST.categories + " ranked attack categories, each tagged with the ATT&CK technique behind it and a severity you can defend."
+    : "Near-identical events from the last 24 hours are folded into ranked attack categories, each tagged with the ATT&CK technique behind it and a severity you can defend.";
+  S.$("stat3l").textContent = LIVE_DATA
+    ? "raw events in the last 24 hours, folded into " + ST.categories + " ranked attack categories"
+    : "raw events in the last 24 hours (live feed unavailable)";
 
   /* ---- statistics counters ---- */
   var statsEl = S.$("numbers");
