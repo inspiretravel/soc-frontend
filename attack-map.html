@@ -156,8 +156,8 @@ window.Site.ready(function () {
   // recent[] has no coordinate. Count what the globe actually shows, not the raw list.
   var REPLAYABLE = (ST.recent || []).filter(function (r) { return r.coord; });
   S.replace(S.$("feedTag"), LIVE_FEED
-    ? S.demoTag("replay · " + REPLAYABLE.length + " geolocated events",
-        "Real events from the live feed. Arcs cycle through the origin countries one at a time so every source stays visible — arc frequency is therefore equal per country, not proportional to volume; the real share is in Top origins. Events whose origin IP has no country yet are counted in the totals but cannot be placed on the globe.")
+    ? S.demoTag("arcs · every origin country, in turn",
+        "Arcs rotate through each country the feed reported in the last 24h, one per country, so no source is hidden — arc frequency is equal per country, not proportional to volume; the real share is in Top origins. Technique and severity come from a real recent event for that country where the feed carries one. Only part of the day's traffic resolves to a country at all; the rest is counted in every total but cannot be placed on a globe.")
     : S.demoTag("simulated feed", "Sample data — the feed is simulated until the live API answers"));
 
   // T1.3: there is ONE real destination — the single Australian node (region-level coordinate; no city named).
@@ -178,7 +178,7 @@ window.Site.ready(function () {
   function landing() { return LANDINGS[Math.floor(Math.random() * LANDINGS.length)]; }
   var ORIGINS = D.origins.filter(function (o) { return o.coord; });
   // Technique share on the map = the top four queue categories, weighted by their real 24h counts.
-  var TECHS = ST.queue.slice(0, 4).map(function (q) { return { id: q.id, name: q.name, color: S.SEV[q.sev], w: Math.round(q.n / ST.total24 * 100) }; });
+  var TECHS = ST.queue.slice(0, 4).map(function (q) { return { id: q.id, name: q.name, sev: q.sev, color: S.SEV[q.sev], w: Math.round(q.n / ST.total24 * 100) }; });
   var SEV = [{ label: "CRITICAL", color: S.SEV.CRITICAL }, { label: "HIGH", color: S.SEV.HIGH }, { label: "MEDIUM", color: S.SEV.MEDIUM }];
 
   /* right-hand panels */
@@ -335,30 +335,34 @@ window.Site.ready(function () {
     projection.rotate([rot[0] + (e.clientX - lastX) * 0.3, Math.max(-70, Math.min(70, rot[1] - (e.clientY - lastY) * 0.3)), rot[2]]);
     lastX = e.clientX; lastY = e.clientY;
   });
-  // Round-robin the arcs across origin countries: every spawn moves to the next country, so no two
-  // consecutive arcs share an origin and each source keeps reappearing. Within a country its own
-  // real events cycle in order, so every arc is still a real event from the feed.
-  // This gives each country EQUAL air time rather than air time proportional to its volume — the
-  // real share of traffic is the Top origins panel beside the globe, not the arc frequency.
-  function groupByOrigin(list) {
-    var groups = {}, order = [];
-    list.forEach(function (r) { var k = r.cc || "--"; if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(r); });
-    order.sort(function (a, b) { return groups[b].length - groups[a].length; });   // busiest country leads
-    return { order: order, groups: groups };
-  }
-  var RR = groupByOrigin(REPLAYABLE), rrIdx = 0, rrPos = {};
+  // Rotate the arcs across EVERY origin country the feed reported for the last 24h, not just the
+  // countries that happen to appear in recent[]. recent[] is the last 26 events, which is often one
+  // scanner's burst — today it is 19/26 from a country holding 2% of the day's traffic, while the
+  // two biggest sources (33% and 18%) are absent from it entirely. Driving the globe off that list
+  // showed three countries out of six and gave the loudest burst top billing.
+  // ORIGINS is the same list the Top origins panel renders, so globe and panel now agree.
+  var byCC = {};
+  REPLAYABLE.forEach(function (r) { (byCC[r.cc] = byCC[r.cc] || []).push(r); });
+  var ROTATION = ORIGINS.slice(), rrIdx = 0, rrPos = {};
   var originIdx = 0;
+  // Technique + severity come from a real event of that country when the feed carries one; the
+  // countries with no recent event still fly, drawn from the real technique mix (they did attack
+  // in the last 24h — the feed just has no per-event detail for them in this window).
   function nextReplay() {
-    var k = RR.order[rrIdx++ % RR.order.length], g = RR.groups[k];
-    var i = (rrPos[k] || 0) % g.length; rrPos[k] = i + 1;
-    return g[i];
+    var o = ROTATION[rrIdx++ % ROTATION.length], g = byCC[o.cc];
+    if (g && g.length) {
+      var i = (rrPos[o.cc] || 0) % g.length; rrPos[o.cc] = i + 1;
+      return { cc: o.cc, coord: o.coord, sev: g[i].sev, tid: g[i].tid, real: true };
+    }
+    var t = TECHS.length ? pick(TECHS) : null;
+    return { cc: o.cc, coord: o.coord, sev: t ? t.sev : null, tid: t ? t.id : null, real: false };
   }
   // Arcs should never stop flying. When the live feed's recent events can't be drawn (e.g. their
   // origin IPs haven't been geolocated yet so there's no coordinate), fall back to the simulated
   // spawner — drawn from the SAME real origin countries / techniques the right-hand panels show,
   // weighted by their real counts, so it stays representative. The counts and charts are untouched;
   // only the animation is kept alive. Label it so no one mistakes it for a literal replay.
-  var REPLAY_OK = REPLAYABLE.length > 0;
+  var REPLAY_OK = ROTATION.length > 0;
   if (LIVE_FEED && !REPLAY_OK) {
     S.replace(S.$("feedTag"), S.demoTag("illustrative arcs", "Recent events have no resolved origin yet; arcs are drawn from the real origin-country and technique mix until they do"));
   }
