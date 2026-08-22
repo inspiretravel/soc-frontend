@@ -138,8 +138,13 @@ if len(sys.argv) >= 3 and sys.argv[1] == "--live":
             if i and i not in real: fail(f"MITRE: {i} not an active Enterprise technique")
     # security: nothing that should never be public
     dumped = json.dumps(payload)
-    for pat in (r"sk-ant-", r"ipattern\.co", r"localhost", r"127\.0\.0\.1", r"raw_input", r"password", r"api[_-]?key"):
+    for pat in (r"sk-ant-", r"ipattern\.co", r"localhost", r"127\.0\.0\.1", r"raw_input", r"api[_-]?key"):
         if re.search(pat, dumped, re.I): fail(f"SECURITY: live payload contains {pat}")
+    # Credentials: match a field or an assignment, not the bare word. A case summary advising
+    # "force password resets if so" is remediation prose, and matching on `password` alone made
+    # the gate reject a clean payload -- a gate that cries wolf gets ignored, which is worse.
+    for pat in (r'"pass(?:word|wd|)"\s*:', r'pass(?:word|wd)\s*='):
+        if re.search(pat, dumped, re.I): fail(f"SECURITY: live payload contains a credential field ({pat})")
     for w in warns: print("WARN:", w)
     if errors:
         print("REJECT - %d problem(s):" % len(errors)); [print("  x", e) for e in errors]; sys.exit(1)
