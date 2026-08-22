@@ -156,8 +156,8 @@ window.Site.ready(function () {
   // recent[] has no coordinate. Count what the globe actually shows, not the raw list.
   var REPLAYABLE = (ST.recent || []).filter(function (r) { return r.coord; });
   S.replace(S.$("feedTag"), LIVE_FEED
-    ? S.demoTag("replay · last " + REPLAYABLE.length + " geolocated events",
-        "Real events from the live feed. Events whose origin IP has no country yet are counted in the totals but cannot be placed on the globe. Consecutive hits from one country are spread out so every source stays visible.")
+    ? S.demoTag("replay · " + REPLAYABLE.length + " geolocated events",
+        "Real events from the live feed. Arcs cycle through the origin countries one at a time so every source stays visible — arc frequency is therefore equal per country, not proportional to volume; the real share is in Top origins. Events whose origin IP has no country yet are counted in the totals but cannot be placed on the globe.")
     : S.demoTag("simulated feed", "Sample data — the feed is simulated until the live API answers"));
 
   // T1.3: there is ONE real destination — the single Australian node (region-level coordinate; no city named).
@@ -335,36 +335,39 @@ window.Site.ready(function () {
     projection.rotate([rot[0] + (e.clientX - lastX) * 0.3, Math.max(-70, Math.min(70, rot[1] - (e.clientY - lastY) * 0.3)), rot[2]]);
     lastX = e.clientX; lastY = e.clientY;
   });
-  // Spread the replay cycle by origin. Every real event is still drawn exactly once per cycle, so
-  // the countries keep their true proportions (a country with 54% of the traffic still gets 54% of
-  // the arcs) — they are just dealt out interleaved instead of in the bursts they arrived in.
-  function spreadByOrigin(list) {
-    var byCC = {}, order = [];
-    list.forEach(function (r) { var k = r.cc || "--"; if (!byCC[k]) { byCC[k] = []; order.push(k); } byCC[k].push(r); });
-    order.sort(function (a, b) { return byCC[b].length - byCC[a].length; });
-    var queue = [];
-    order.forEach(function (k) { queue = queue.concat(byCC[k]); });
-    var out = new Array(queue.length), i = 0, slot;
-    for (slot = 0; slot < queue.length; slot += 2) out[slot] = queue[i++];   // busiest country to every other slot
-    for (slot = 1; slot < queue.length; slot += 2) out[slot] = queue[i++];
-    return out;
+  // Round-robin the arcs across origin countries: every spawn moves to the next country, so no two
+  // consecutive arcs share an origin and each source keeps reappearing. Within a country its own
+  // real events cycle in order, so every arc is still a real event from the feed.
+  // This gives each country EQUAL air time rather than air time proportional to its volume — the
+  // real share of traffic is the Top origins panel beside the globe, not the arc frequency.
+  function groupByOrigin(list) {
+    var groups = {}, order = [];
+    list.forEach(function (r) { var k = r.cc || "--"; if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(r); });
+    order.sort(function (a, b) { return groups[b].length - groups[a].length; });   // busiest country leads
+    return { order: order, groups: groups };
   }
-  var replayIdx = 0, REPLAY = spreadByOrigin(REPLAYABLE), lastCC = null, runCC = 0;
+  var RR = groupByOrigin(REPLAYABLE), rrIdx = 0, rrPos = {};
+  var originIdx = 0;
+  function nextReplay() {
+    var k = RR.order[rrIdx++ % RR.order.length], g = RR.groups[k];
+    var i = (rrPos[k] || 0) % g.length; rrPos[k] = i + 1;
+    return g[i];
+  }
   // Arcs should never stop flying. When the live feed's recent events can't be drawn (e.g. their
   // origin IPs haven't been geolocated yet so there's no coordinate), fall back to the simulated
   // spawner — drawn from the SAME real origin countries / techniques the right-hand panels show,
   // weighted by their real counts, so it stays representative. The counts and charts are untouched;
   // only the animation is kept alive. Label it so no one mistakes it for a literal replay.
-  var REPLAY_OK = REPLAY.length > 0;
+  var REPLAY_OK = REPLAYABLE.length > 0;
   if (LIVE_FEED && !REPLAY_OK) {
     S.replace(S.$("feedTag"), S.demoTag("illustrative arcs", "Recent events have no resolved origin yet; arcs are drawn from the real origin-country and technique mix until they do"));
   }
   // Real scanner traffic arrives in bursts: one country can hold a run of a dozen consecutive
-  // events, which on a 2.1s spawn reads as "only this country ever attacks". REPLAY is dealt out
-  // pre-spread (see spreadByOrigin), so the run is broken without touching the mix.
+  // events, which on a 2.1s spawn reads as "only this country ever attacks". The round-robin above
+  // guarantees the next arc comes from a different country whenever more than one has events.
   function spawn() {
     if (LIVE_FEED && REPLAY_OK) {
-      var r = REPLAY[replayIdx++ % REPLAY.length]; lastCC = r.cc;
+      var r = nextReplay();
       var sevObj = SEV.filter(function (x) { return x.label === r.sev; })[0] || SEV[2];
       var techObj = TECHS.filter(function (t) { return t.id === r.tid; })[0] || { id: r.tid, name: r.tid, color: sevObj.color, w: 0 };
       attacks.push({ origin: { name: r.cc, coord: r.coord }, target: landing(), tech: techObj, sev: sevObj, count: 0, replay: true, t0: performance.now(), dur: 2600 + Math.random() * 1400, landed: false });
@@ -378,11 +381,9 @@ window.Site.ready(function () {
       { name: "KR", coord: [127.8, 36.5], w: 3 }, { name: "IN", coord: [78.9, 22.6], w: 2 }, { name: "NL", coord: [5.3, 52.2], w: 2 }, { name: "DE", coord: [10.4, 51.2], w: 2 }
     ];
     var techPool = TECHS.length ? TECHS : [{ id: "T1110", name: "Brute force", color: S.SEV.HIGH, w: 5 }, { id: "T1190", name: "Exploit public-facing app", color: S.SEV.CRITICAL, w: 4 }];
-    var origin = pick(originPool), tech = pick(techPool);
-    // Weighted picking keeps the real country mix; only cap a run at two so one country never
-    // holds the globe. Re-picking every repeat would flatten a 54%-share country to ~25%.
-    for (var att = 0; att < 4 && originPool.length > 1 && runCC >= 2 && origin.name === lastCC; att++) origin = pick(originPool);
-    runCC = origin.name === lastCC ? runCC + 1 : 1; lastCC = origin.name;
+    // Same rule for the illustrative spawner: step through the origin list rather than picking
+    // weighted, so consecutive arcs never share a country.
+    var origin = originPool[originIdx++ % originPool.length], tech = pick(techPool);
     var sev = SEV[Math.random() < 0.18 ? 0 : Math.random() < 0.6 ? 1 : 2];
     var count = [50, 58, 100, 116, 150, 174, 288][Math.floor(Math.random() * 7)];
     attacks.push({ origin: origin, target: landing(), tech: tech, sev: sev, count: count, t0: performance.now(), dur: 2600 + Math.random() * 1400, landed: false });
